@@ -11,7 +11,7 @@ body{margin:0;background:#f5f6f8;color:#171717;font-family:system-ui,-apple-syst
 .monthbar{position:sticky;top:0;z-index:5;height:52px;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #ddd;padding:6px 12px}
 .monthbar button{border:0;background:#eef0f3;border-radius:10px;font-size:24px;width:40px;height:38px;line-height:1}
 .month{font-weight:750;font-size:17px;text-transform:capitalize}
-main{padding:10px 10px 16px;max-width:700px;margin:auto}
+main{padding:10px 10px 20px;max-width:700px;margin:auto}
 .weekdays,.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
 .weekdays div{text-align:center;font-size:10px;font-weight:750;color:#777;padding:3px 0}
 .day{height:64px;min-height:64px;max-height:64px;border:1px solid #ddd;background:#fff;border-radius:10px;padding:6px;position:relative;cursor:pointer;overflow:hidden}
@@ -22,36 +22,43 @@ main{padding:10px 10px 16px;max-width:700px;margin:auto}
 .badge{display:block;margin-top:7px;font-size:9px;line-height:1.15;white-space:nowrap;overflow:hidden;width:100%}
 .badge-track{display:inline-block;white-space:nowrap}
 .badge-track.marquee{animation:marquee 5.5s linear infinite}
-@keyframes marquee{
-0%,15%{transform:translateX(0)}
-85%,100%{transform:translateX(var(--scroll-distance))}
-}
+@keyframes marquee{0%,15%{transform:translateX(0)}85%,100%{transform:translateX(var(--scroll-distance))}}
 .selected-count{margin:12px 2px 8px;font-size:14px;font-weight:650}
 .cases{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .case{border:0;border-radius:12px;padding:11px 4px;background:#fff;box-shadow:0 1px 3px #0001;font-weight:750;cursor:pointer;min-height:55px}
 .case small{display:block;font-size:9px;font-weight:500;color:#666;margin-top:3px;white-space:nowrap}
 .case:active{transform:scale(.98)}
+.top{display:flex;gap:8px;align-items:center;margin:0 0 10px}
+.auth{border:0;border-radius:10px;padding:10px 13px;background:#111827;color:white;font-weight:700}
+.auth.connected{background:#e8f5e9;color:#176b2c}
+#calendarSelect{flex:1;min-width:0;padding:9px;border:1px solid #ccc;border-radius:10px;background:#fff}
+.status{font-size:12px;color:#666;margin:0 2px 8px;min-height:18px}
 footer{margin-top:12px;color:#777;font-size:11px;text-align:center}
 </style>
 </head>
 <body>
 <div class="monthbar">
-  <button id="prev" aria-label="Mois précédent">‹</button>
-  <div class="month" id="month"></div>
-  <button id="next" aria-label="Mois suivant">›</button>
+<button id="prev" aria-label="Mois précédent">‹</button>
+<div class="month" id="month"></div>
+<button id="next" aria-label="Mois suivant">›</button>
 </div>
-
 <main>
-<div class="weekdays">
-<div>LUN</div><div>MAR</div><div>MER</div><div>JEU</div><div>VEN</div><div>SAM</div><div>DIM</div>
+<div class="top">
+<button id="auth" class="auth">Se connecter à Google</button>
+<select id="calendarSelect" hidden aria-label="Agenda Google"></select>
 </div>
+<div class="status" id="status">Connecte-toi à Google pour créer réellement les événements.</div>
+<div class="weekdays"><div>LUN</div><div>MAR</div><div>MER</div><div>JEU</div><div>VEN</div><div>SAM</div><div>DIM</div></div>
 <div class="calendar" id="calendar"></div>
 <div class="selected-count" id="selectedCount">Aucun jour sélectionné</div>
 <div class="cases" id="cases"></div>
-<footer>Prototype V1.2 — événements simulés localement</footer>
+<footer>Cas Calendar V1.3 — connexion Google et création réelle des événements</footer>
 </main>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
+const CLIENT_ID="298885465935-ok9fueua2c23l2p2f32uep6o1tcihbm4.apps.googleusercontent.com";
+const SCOPES="https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events";
 const cases=[
 {id:1,name:"Matin",start:"07:30",end:"14:45"},
 {id:2,name:"Soir",start:"11:00",end:"22:00"},
@@ -59,69 +66,96 @@ const cases=[
 {id:4,name:"DOM",start:"07:30",end:"18:00"},
 {id:5,name:"Consultation",start:"08:00",end:"17:00"},
 {id:6,name:"Formation",start:"09:00",end:"17:00"},
-{id:7,name:"RH",allDay:true},
-{id:8,name:"RTT",allDay:true},
-{id:9,name:"CA",allDay:true}
+{id:7,name:"RH",allDay:true},{id:8,name:"RTT",allDay:true},{id:9,name:"CA",allDay:true}
 ];
-
-let cursor=new Date(); cursor.setDate(1);
-const selected=new Set(), assignments=new Map();
+let cursor=new Date();cursor.setDate(1);
+const selected=new Set(),assignments=new Map();
+let accessToken=null,tokenClient=null;
 const pad=n=>String(n).padStart(2,"0");
 const keyOf=(y,m,d)=>`${y}-${pad(m+1)}-${pad(d)}`;
+const tz=Intl.DateTimeFormat().resolvedOptions().timeZone||"Europe/Paris";
 
 function render(){
  const y=cursor.getFullYear(),m=cursor.getMonth();
  document.getElementById("month").textContent=new Intl.DateTimeFormat("fr-FR",{month:"long",year:"numeric"}).format(cursor);
- const first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate();
- const cal=document.getElementById("calendar");cal.innerHTML="";
+ const first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate(),cal=document.getElementById("calendar");
+ cal.innerHTML="";
  for(let i=0;i<first;i++){const e=document.createElement("div");e.className="day empty";cal.appendChild(e)}
  const today=new Date();
  for(let d=1;d<=days;d++){
-  const key=keyOf(y,m,d),e=document.createElement("div");
-  e.className="day"+(selected.has(key)?" selected":"");
+  const key=keyOf(y,m,d),e=document.createElement("div");e.className="day"+(selected.has(key)?" selected":"");
   if(y===today.getFullYear()&&m===today.getMonth()&&d===today.getDate())e.classList.add("today");
   const n=document.createElement("div");n.className="num";n.textContent=d;e.appendChild(n);
   if(assignments.has(key)){
-   const c=cases.find(x=>x.id===assignments.get(key));
-   const b=document.createElement("span");b.className="badge";
-   const track=document.createElement("span");track.className="badge-track";
+   const c=cases.find(x=>x.id===assignments.get(key)),b=document.createElement("span"),track=document.createElement("span");
+   b.className="badge";track.className="badge-track";
    track.textContent=c.allDay?c.name:`${c.name} · ${c.start} → ${c.end}`;
    b.appendChild(track);e.appendChild(b);
-   if(!c.allDay){
-     requestAnimationFrame(()=>{
-       const overflow=track.scrollWidth-b.clientWidth;
-       if(overflow>2){
-         track.classList.add("marquee");
-         track.style.setProperty("--scroll-distance",`-${overflow}px`);
-       }
-     });
-   }
+   if(!c.allDay)requestAnimationFrame(()=>{const overflow=track.scrollWidth-b.clientWidth;if(overflow>2){track.classList.add("marquee");track.style.setProperty("--scroll-distance",`-${overflow}px`)}})
   }
   e.onclick=()=>{selected.has(key)?selected.delete(key):selected.add(key);render()};
   cal.appendChild(e);
  }
  updateCount();
 }
-function updateCount(){
- const n=selected.size;
- document.getElementById("selectedCount").textContent=n===0?"Aucun jour sélectionné":`${n} jour${n>1?"s":""} sélectionné${n>1?"s":""}`;
-}
+function updateCount(){const n=selected.size;document.getElementById("selectedCount").textContent=n===0?"Aucun jour sélectionné":`${n} jour${n>1?"s":""} sélectionné${n>1?"s":""}`}
+function setStatus(t){document.getElementById("status").textContent=t}
 function renderCases(){
  const box=document.getElementById("cases");
  cases.forEach(c=>{
   const b=document.createElement("button");b.className="case";
   b.innerHTML=`${c.name}<small>${c.allDay?"Journée entière":c.start+" → "+c.end}</small>`;
-  b.onclick=()=>{
-   if(!selected.size)return;
-   for(const key of selected)assignments.set(key,c.id);
-   selected.clear();render();
-  };
-  box.appendChild(b);
- });
+  b.onclick=()=>applyCase(c);box.appendChild(b);
+ })
 }
+function initGoogle(){
+ if(!window.google?.accounts?.oauth2){setTimeout(initGoogle,250);return}
+ tokenClient=google.accounts.oauth2.initTokenClient({
+  client_id:CLIENT_ID,scope:SCOPES,
+  callback:async r=>{if(r.error){setStatus("Autorisation Google refusée.");return}accessToken=r.access_token;document.getElementById("auth").textContent="Google connecté";document.getElementById("auth").classList.add("connected");await loadCalendars()}
+ })
+}
+async function googleFetch(url,options={}){
+ const headers=new Headers(options.headers||{});
+ headers.set("Authorization","Bearer "+accessToken);headers.set("Content-Type","application/json");
+ const r=await fetch(url,{...options,headers});if(!r.ok)throw new Error(await r.text());return r.status===204?null:r.json()
+}
+async function loadCalendars(){
+ try{
+  setStatus("Chargement de tes agendas…");
+  const data=await googleFetch("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer&showDeleted=false");
+  const sel=document.getElementById("calendarSelect");sel.innerHTML="";
+  (data.items||[]).forEach(c=>{const o=document.createElement("option");o.value=c.id;o.textContent=c.summary+(c.primary?" (principal)":"");sel.appendChild(o)});
+  sel.hidden=!(data.items&&data.items.length);
+  setStatus(data.items?.length?`${data.items.length} agenda${data.items.length>1?"s":""} disponible${data.items.length>1?"s":""}.`:"Aucun agenda modifiable trouvé.")
+ }catch(e){console.error(e);setStatus("Impossible de charger les agendas Google.")}
+}
+async function applyCase(c){
+ if(!selected.size){setStatus("Sélectionne d'abord au moins un jour.");return}
+ if(!accessToken){setStatus("Connecte-toi à Google avant d'appliquer un cas.");return}
+ const calendarId=document.getElementById("calendarSelect").value;
+ if(!calendarId){setStatus("Choisis un agenda Google.");return}
+ const keys=[...selected];setStatus(`Création de ${keys.length} événement${keys.length>1?"s":""}…`);
+ try{
+  for(const key of keys){
+   const [y,m,d]=key.split("-").map(Number),body={summary:c.name};
+   if(c.allDay){
+    const start=key,next=new Date(y,m-1,d+1),end=`${next.getFullYear()}-${pad(next.getMonth()+1)}-${pad(next.getDate())}`;
+    body.start={date:start};body.end={date:end};
+   }else{
+    body.start={dateTime:`${key}T${c.start}:00`,timeZone:tz};
+    body.end={dateTime:`${key}T${c.end}:00`,timeZone:tz};
+   }
+   await googleFetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,{method:"POST",body:JSON.stringify(body)});
+   assignments.set(key,c.id);
+  }
+  selected.clear();render();setStatus(`${keys.length} événement${keys.length>1?"s":""} créé${keys.length>1?"s":""} dans Google Calendar.`)
+ }catch(e){console.error(e);setStatus("Erreur lors de la création. Vérifie l'autorisation Google et ton agenda.")}
+}
+document.getElementById("auth").onclick=()=>{if(!tokenClient){setStatus("Google est encore en cours de chargement…");return}tokenClient.requestAccessToken({prompt:accessToken?"":"consent"})};
 document.getElementById("prev").onclick=()=>{cursor.setMonth(cursor.getMonth()-1);selected.clear();render()};
 document.getElementById("next").onclick=()=>{cursor.setMonth(cursor.getMonth()+1);selected.clear();render()};
-renderCases();render();
+renderCases();render();initGoogle();
 </script>
 </body>
 </html>
