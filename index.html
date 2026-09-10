@@ -5,40 +5,225 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#ffffff">
 <title>Cas Calendar</title>
+
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#f5f6f8;color:#171717;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.monthbar{position:sticky;top:0;z-index:5;height:52px;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #ddd;padding:6px 12px}
-.monthbar button{border:0;background:#eef0f3;border-radius:10px;font-size:24px;width:40px;height:38px;line-height:1}
-.month{font-weight:750;font-size:17px;text-transform:capitalize}
-main{padding:10px 10px 20px;max-width:700px;margin:auto}
-.weekdays,.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
-.weekdays div{text-align:center;font-size:10px;font-weight:750;color:#777;padding:3px 0}
-.day{height:64px;min-height:64px;max-height:64px;border:1px solid #ddd;background:#fff;border-radius:10px;padding:6px;position:relative;cursor:pointer;overflow:hidden}
-.day.empty{background:transparent;border:0;cursor:default}
-.day.selected{outline:3px solid #111827;outline-offset:-3px;background:#eef2ff}
-.day.today .num{font-weight:850}
-.num{font-size:14px}
-.badge{display:block;margin-top:7px;font-size:9px;line-height:1.15;white-space:nowrap;overflow:hidden;width:100%}
-.badge-track{display:inline-block;white-space:nowrap}
-.badge-track.marquee{animation:marquee 5.5s linear infinite}
-@keyframes marquee{0%,15%{transform:translateX(0)}85%,100%{transform:translateX(var(--scroll-distance))}}
-.selected-count{margin:12px 2px 8px;font-size:14px;font-weight:650}
-.actions{display:flex;gap:8px;margin:0 0 9px}
-.trash{border:0;border-radius:10px;padding:9px 13px;background:#ffe9e9;color:#b42318;font-weight:750;cursor:pointer}
-.trash:disabled{opacity:.45;cursor:default}
-.cases{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-.case{border:0;border-radius:12px;padding:11px 4px;background:#fff;box-shadow:0 1px 3px #0001;font-weight:750;cursor:pointer;min-height:55px}
-.case small{display:block;font-size:9px;font-weight:500;color:#666;margin-top:3px;white-space:nowrap}
-.case:active{transform:scale(.98)}
-.top{display:flex;gap:8px;align-items:center;margin:0 0 10px}
-.auth{border:0;border-radius:10px;padding:10px 13px;background:#111827;color:white;font-weight:700}
-.auth.connected{background:#e8f5e9;color:#176b2c}
-#calendarSelect{flex:1;min-width:0;padding:9px;border:1px solid #ccc;border-radius:10px;background:#fff}
-.status{font-size:12px;color:#666;margin:0 2px 8px;min-height:18px}
-footer{margin-top:12px;color:#777;font-size:11px;text-align:center}
+
+body{
+margin:0;
+background:#f5f6f8;
+color:#171717;
+font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif
+}
+
+.monthbar{
+position:sticky;
+top:0;
+z-index:5;
+height:52px;
+display:flex;
+align-items:center;
+justify-content:space-between;
+background:#fff;
+border-bottom:1px solid #ddd;
+padding:6px 12px
+}
+
+.monthbar button{
+border:0;
+background:#eef0f3;
+border-radius:10px;
+font-size:24px;
+width:40px;
+height:38px
+}
+
+.month{
+font-weight:750;
+font-size:17px;
+text-transform:capitalize
+}
+
+main{
+padding:10px 10px 20px;
+max-width:700px;
+margin:auto
+}
+
+.weekdays,.calendar{
+display:grid;
+grid-template-columns:repeat(7,minmax(0,1fr));
+gap:5px
+}
+
+.weekdays div{
+text-align:center;
+font-size:10px;
+font-weight:750;
+color:#777;
+padding:3px 0
+}
+
+.day{
+height:64px;
+min-height:64px;
+max-height:64px;
+border:1px solid #ddd;
+background:#fff;
+border-radius:10px;
+padding:6px;
+position:relative;
+cursor:pointer;
+overflow:hidden
+}
+
+.day.empty{
+background:transparent;
+border:0;
+cursor:default
+}
+
+.day.selected{
+outline:3px solid #111827;
+outline-offset:-3px;
+background:#eef2ff
+}
+
+.day.today .num{
+font-weight:850
+}
+
+.num{
+font-size:14px
+}
+
+.badge{
+display:block;
+margin-top:7px;
+font-size:9px;
+line-height:1.15;
+white-space:nowrap;
+overflow:hidden;
+width:100%
+}
+
+.badge-track{
+display:inline-block;
+white-space:nowrap
+}
+
+.badge-track.marquee{
+animation:marquee 5.5s linear infinite
+}
+
+@keyframes marquee{
+0%,15%{transform:translateX(0)}
+85%,100%{transform:translateX(var(--scroll-distance))}
+}
+
+.selected-count{
+margin:12px 2px 8px;
+font-size:14px;
+font-weight:650
+}
+
+.actions{
+display:flex;
+gap:8px;
+margin:0 0 9px
+}
+
+.trash{
+border:0;
+border-radius:10px;
+padding:9px 13px;
+background:#ffe9e9;
+color:#b42318;
+font-weight:750;
+cursor:pointer
+}
+
+.trash:disabled{
+opacity:.45;
+cursor:default
+}
+
+.cases{
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:7px
+}
+
+.case{
+border:0;
+border-radius:12px;
+padding:11px 4px;
+background:#fff;
+box-shadow:0 1px 3px #0001;
+font-weight:750;
+cursor:pointer;
+min-height:55px
+}
+
+.case small{
+display:block;
+font-size:9px;
+font-weight:500;
+color:#666;
+margin-top:3px;
+white-space:nowrap
+}
+
+.case:active{
+transform:scale(.98)
+}
+
+.top{
+display:flex;
+gap:8px;
+align-items:center;
+margin:0 0 10px
+}
+
+.auth{
+border:0;
+border-radius:10px;
+padding:10px 13px;
+background:#111827;
+color:white;
+font-weight:700
+}
+
+.auth.connected{
+background:#e8f5e9;
+color:#176b2c
+}
+
+#calendarSelect{
+flex:1;
+min-width:0;
+padding:9px;
+border:1px solid #ccc;
+border-radius:10px;
+background:#fff
+}
+
+.status{
+font-size:12px;
+color:#666;
+margin:0 2px 8px;
+min-height:18px
+}
+
+footer{
+margin-top:12px;
+color:#777;
+font-size:11px;
+text-align:center
+}
 </style>
 </head>
+
 <body>
 
 <div class="monthbar">
@@ -50,7 +235,10 @@ footer{margin-top:12px;color:#777;font-size:11px;text-align:center}
 <main>
 
 <div class="top">
-<button id="auth" class="auth">Se connecter à Google</button>
+<button id="auth" class="auth">
+Se connecter à Google
+</button>
+
 <select id="calendarSelect" hidden></select>
 </div>
 
@@ -59,8 +247,13 @@ Connecte-toi à Google pour créer réellement les événements.
 </div>
 
 <div class="weekdays">
-<div>LUN</div><div>MAR</div><div>MER</div>
-<div>JEU</div><div>VEN</div><div>SAM</div><div>DIM</div>
+<div>LUN</div>
+<div>MAR</div>
+<div>MER</div>
+<div>JEU</div>
+<div>VEN</div>
+<div>SAM</div>
+<div>DIM</div>
 </div>
 
 <div class="calendar" id="calendar"></div>
@@ -78,7 +271,7 @@ Aucun jour sélectionné
 <div class="cases" id="cases"></div>
 
 <footer>
-Cas Calendar V1.5
+Cas Calendar V1.6
 </footer>
 
 </main>
@@ -87,21 +280,32 @@ Cas Calendar V1.5
 
 <script>
 
-const CLIENT_ID="298885465935-ok9fueua2c23l2p2f32uep6o1tcihbm4.apps.googleusercontent.com";
+const CLIENT_ID=
+"298885465935-ok9fueua2c23l2p2f32uep6o1tcihbm4.apps.googleusercontent.com";
 
 const SCOPES=
 "https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events";
 
 const cases=[
+
 {id:1,name:"Matin",start:"07:30",end:"14:45"},
+
 {id:2,name:"Soir",start:"11:00",end:"22:00"},
+
 {id:3,name:"Soir rouge",start:"11:00",end:"21:30"},
+
 {id:4,name:"DOM",start:"07:30",end:"18:00"},
+
 {id:5,name:"Consultation",start:"08:00",end:"17:00"},
+
 {id:6,name:"Formation",start:"09:00",end:"17:00"},
+
 {id:7,name:"RH",allDay:true},
+
 {id:8,name:"RTT",allDay:true},
+
 {id:9,name:"CA",allDay:true}
+
 ];
 
 let cursor=new Date();
@@ -114,15 +318,19 @@ const eventIds=new Map();
 let accessToken=null;
 let tokenClient=null;
 
-const STORAGE_CALENDAR="casCalendar.selectedCalendarId";
+const STORAGE_CALENDAR=
+"casCalendar.selectedCalendarId";
 
-const pad=n=>String(n).padStart(2,"0");
+const pad=n=>
+String(n).padStart(2,"0");
 
 const keyOf=(y,m,d)=>
 `${y}-${pad(m+1)}-${pad(d)}`;
 
 const tz=
-Intl.DateTimeFormat().resolvedOptions().timeZone||
+Intl.DateTimeFormat()
+.resolvedOptions()
+.timeZone||
 "Europe/Paris";
 
 
@@ -132,10 +340,13 @@ const y=cursor.getFullYear();
 const m=cursor.getMonth();
 
 document.getElementById("month").textContent=
-new Intl.DateTimeFormat("fr-FR",{
+new Intl.DateTimeFormat(
+"fr-FR",
+{
 month:"long",
 year:"numeric"
-}).format(cursor);
+}
+).format(cursor);
 
 const first=
 (new Date(y,m,1).getDay()+6)%7;
@@ -150,8 +361,11 @@ cal.innerHTML="";
 
 for(let i=0;i<first;i++){
 
-const e=document.createElement("div");
+const e=
+document.createElement("div");
+
 e.className="day empty";
+
 cal.appendChild(e);
 
 }
@@ -160,9 +374,11 @@ const today=new Date();
 
 for(let d=1;d<=days;d++){
 
-const key=keyOf(y,m,d);
+const key=
+keyOf(y,m,d);
 
-const e=document.createElement("div");
+const e=
+document.createElement("div");
 
 e.className=
 "day"+
@@ -172,10 +388,15 @@ if(
 y===today.getFullYear()&&
 m===today.getMonth()&&
 d===today.getDate()
-)
+){
+
 e.classList.add("today");
 
-const n=document.createElement("div");
+}
+
+const n=
+document.createElement("div");
+
 n.className="num";
 n.textContent=d;
 
@@ -184,10 +405,17 @@ e.appendChild(n);
 if(assignments.has(key)){
 
 const c=
-cases.find(x=>x.id===assignments.get(key));
+cases.find(
+x=>x.id===assignments.get(key)
+);
 
-const b=document.createElement("span");
-const track=document.createElement("span");
+if(c){
+
+const b=
+document.createElement("span");
+
+const track=
+document.createElement("span");
 
 b.className="badge";
 track.className="badge-track";
@@ -198,9 +426,10 @@ c.allDay
 :`${c.name} · ${c.start} → ${c.end}`;
 
 b.appendChild(track);
+
 e.appendChild(b);
 
-if(!c.allDay)
+if(!c.allDay){
 
 requestAnimationFrame(()=>{
 
@@ -222,11 +451,16 @@ track.style.setProperty(
 
 }
 
+}
+
+}
+
 e.onclick=()=>{
 
-selected.has(key)
-?selected.delete(key)
-:selected.add(key);
+if(selected.has(key))
+selected.delete(key);
+else
+selected.add(key);
 
 render();
 
@@ -245,21 +479,27 @@ function updateCount(){
 
 const n=selected.size;
 
-document.getElementById("selectedCount").textContent=
+document.getElementById(
+"selectedCount"
+).textContent=
 
 n===0
 ?"Aucun jour sélectionné"
 :`${n} jour${n>1?"s":""} sélectionné${n>1?"s":""}`;
 
-document.getElementById("trash").disabled=
+document.getElementById(
+"trash"
+).disabled=
 n===0;
 
 }
 
 
-function setStatus(t){
+function setStatus(text){
 
-document.getElementById("status").textContent=t;
+document.getElementById(
+"status"
+).textContent=text;
 
 }
 
@@ -269,9 +509,12 @@ function renderCases(){
 const box=
 document.getElementById("cases");
 
+box.innerHTML="";
+
 cases.forEach(c=>{
 
-const b=document.createElement("button");
+const b=
+document.createElement("button");
 
 b.className="case";
 
@@ -282,7 +525,8 @@ c.allDay
 :c.start+" → "+c.end
 }</small>`;
 
-b.onclick=()=>applyCase(c);
+b.onclick=
+()=>applyCase(c);
 
 box.appendChild(b);
 
@@ -293,7 +537,11 @@ box.appendChild(b);
 
 function initGoogle(){
 
-if(!window.google?.accounts?.oauth2){
+if(
+!window.google||
+!window.google.accounts||
+!window.google.accounts.oauth2
+){
 
 setTimeout(initGoogle,250);
 
@@ -308,23 +556,29 @@ client_id:CLIENT_ID,
 
 scope:SCOPES,
 
-callback:async r=>{
+callback:async response=>{
 
-if(r.error){
+if(response.error){
 
-setStatus("Autorisation Google refusée.");
+setStatus(
+"Autorisation Google refusée."
+);
 
 return;
 
 }
 
-accessToken=r.access_token;
+accessToken=
+response.access_token;
 
-document.getElementById("auth").textContent=
+document.getElementById(
+"auth"
+).textContent=
 "Google connecté";
 
-document.getElementById("auth")
-.classList.add("connected");
+document.getElementById(
+"auth"
+).classList.add("connected");
 
 await loadCalendars();
 
@@ -335,10 +589,15 @@ await loadCalendars();
 }
 
 
-async function googleFetch(url,options={}){
+async function googleFetch(
+url,
+options={}
+){
 
 const headers=
-new Headers(options.headers||{});
+new Headers(
+options.headers||{}
+);
 
 headers.set(
 "Authorization",
@@ -350,18 +609,26 @@ headers.set(
 "application/json"
 );
 
-const r=
-await fetch(url,{
+const response=
+await fetch(
+url,
+{
 ...options,
 headers
-});
+}
+);
 
-if(!r.ok)
-throw new Error(await r.text());
+if(!response.ok){
 
-return r.status===204
+throw new Error(
+await response.text()
+);
+
+}
+
+return response.status===204
 ?null
-:r.json();
+:response.json();
 
 }
 
@@ -372,15 +639,26 @@ const y=cursor.getFullYear();
 const m=cursor.getMonth();
 
 const start=
-new Date(y,m,1).toISOString();
+new Date(
+y,
+m,
+1
+).toISOString();
 
 const next=
-new Date(y,m+1,1);
+new Date(
+y,
+m+1,
+1
+);
 
 const end=
 next.toISOString();
 
-return {start,end};
+return {
+start,
+end
+};
 
 }
 
@@ -391,7 +669,11 @@ const [y,m,d]=
 key.split("-").map(Number);
 
 const n=
-new Date(y,m-1,d+1);
+new Date(
+y,
+m-1,
+d+1
+);
 
 return[
 n.getFullYear(),
@@ -402,33 +684,42 @@ n.getDate()
 }
 
 
-function eventMatchesCase(e,c,key){
+function eventMatchesCase(
+event,
+c,
+key
+){
 
 if(
-!e||
-e.status==="cancelled"||
-e.summary!==c.name
+!event||
+event.status==="cancelled"||
+event.summary!==c.name
 )
 return false;
 
 if(
-e.extendedProperties?.private?.casCalendar==="1"&&
-e.extendedProperties.private.casDate===key
+event.extendedProperties?.private?.casCalendar==="1"&&
+event.extendedProperties.private.casDate===key
 )
 return true;
 
-if(c.allDay)
+if(c.allDay){
 
 return(
-e.start?.date===key&&
-e.end?.date===keyOf(...nextDateParts(key))
+event.start?.date===key&&
+event.end?.date===
+keyOf(
+...nextDateParts(key)
+)
 );
 
+}
+
 return(
-e.start?.dateTime?.startsWith(
+event.start?.dateTime?.startsWith(
 `${key}T${c.start}:`
 )&&
-e.end?.dateTime?.startsWith(
+event.end?.dateTime?.startsWith(
 `${key}T${c.end}:`
 )
 );
@@ -438,11 +729,14 @@ e.end?.dateTime?.startsWith(
 
 function rememberCalendar(id){
 
-if(id)
+if(id){
+
 localStorage.setItem(
 STORAGE_CALENDAR,
 id
 );
+
+}
 
 }
 
@@ -462,14 +756,19 @@ if(!accessToken)
 return;
 
 const calendarId=
-document.getElementById("calendarSelect").value;
+document.getElementById(
+"calendarSelect"
+).value;
 
 if(!calendarId)
 return;
 
 try{
 
-const {start,end}=monthRange();
+const {
+start,
+end
+}=monthRange();
 
 const url=
 `https://www.googleapis.com/calendar/v3/calendars/${
@@ -486,28 +785,39 @@ await googleFetch(url);
 assignments.clear();
 eventIds.clear();
 
-for(const e of(data.items||[])){
+for(
+const event of(data.items||[])
+){
 
 const key=
-e.extendedProperties?.private?.casDate||
+event.extendedProperties?.private?.casDate||
 (
-e.start?.date||
-e.start?.dateTime?.slice(0,10)
+event.start?.date||
+event.start?.dateTime?.slice(0,10)
 );
 
-const cid=
+const caseId=
 Number(
-e.extendedProperties?.private?.casId||0
+event.extendedProperties?.private?.casId||0
 );
 
 if(
 key&&
-cid&&
-cases.some(c=>c.id===cid)
+caseId&&
+cases.some(
+c=>c.id===caseId
+)
 ){
 
-assignments.set(key,cid);
-eventIds.set(key,e.id);
+assignments.set(
+key,
+caseId
+);
+
+eventIds.set(
+key,
+event.id
+);
 
 continue;
 
@@ -516,15 +826,28 @@ continue;
 if(key){
 
 const c=
-cases.find(x=>x.name===e.summary);
+cases.find(
+x=>x.name===event.summary
+);
 
 if(
 c&&
-eventMatchesCase(e,c,key)
+eventMatchesCase(
+event,
+c,
+key
+)
 ){
 
-assignments.set(key,c.id);
-eventIds.set(key,e.id);
+assignments.set(
+key,
+c.id
+);
+
+eventIds.set(
+key,
+event.id
+);
 
 }
 
@@ -539,9 +862,9 @@ setStatus(
 );
 
 }
-catch(e){
+catch(error){
 
-console.error(e);
+console.error(error);
 
 setStatus(
 "Impossible de lire les événements Google Calendar."
@@ -565,27 +888,38 @@ await googleFetch(
 "https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer&showDeleted=false"
 );
 
-const sel=
-document.getElementById("calendarSelect");
+const select=
+document.getElementById(
+"calendarSelect"
+);
 
-sel.innerHTML="";
+select.innerHTML="";
 
-(data.items||[]).forEach(c=>{
+(data.items||[]).forEach(
+calendar=>{
 
-const o=
-document.createElement("option");
+const option=
+document.createElement(
+"option"
+);
 
-o.value=c.id;
+option.value=
+calendar.id;
 
-o.textContent=
-c.summary+
-(c.primary?" (principal)":"");
+option.textContent=
+calendar.summary+
+(
+calendar.primary
+?" (principal)"
+:""
+);
 
-sel.appendChild(o);
+select.appendChild(option);
 
-});
+}
+);
 
-sel.hidden=
+select.hidden=
 !(data.items&&data.items.length);
 
 if(data.items?.length){
@@ -594,17 +928,23 @@ const saved=
 rememberedCalendar();
 
 const found=
-(data.items||[]).find(
+data.items.find(
 c=>c.id===saved
 );
 
-sel.value=
+select.value=
 found
 ?saved
-:(data.items.find(c=>c.primary)?.id||
-data.items[0].id);
+:(
+data.items.find(
+c=>c.primary
+)?.id||
+data.items[0].id
+);
 
-rememberCalendar(sel.value);
+rememberCalendar(
+select.value
+);
 
 await syncMonth();
 
@@ -618,9 +958,9 @@ setStatus(
 }
 
 }
-catch(e){
+catch(error){
 
-console.error(e);
+console.error(error);
 
 setStatus(
 "Impossible de charger les agendas Google."
@@ -631,120 +971,24 @@ setStatus(
 }
 
 
-async function deleteExistingForKey(
+/*
+SUPPRESSION D'UN ÉVÉNEMENT
+
+Cette fonction supprime l'ancien événement.
+Elle ne touche PAS immédiatement à l'affichage :
+c'est la fonction appelante qui le fait juste après.
+*/
+
+async function deleteEventForKey(
 key,
 calendarId
 ){
 
-const oldId=
+const eventId=
 eventIds.get(key);
 
-if(oldId){
-
-try{
-
-await googleFetch(
-`https://www.googleapis.com/calendar/v3/calendars/${
-encodeURIComponent(calendarId)
-}/events/${
-encodeURIComponent(oldId)
-}`,
-{
-method:"DELETE"
-}
-);
-
+if(!eventId)
 return;
-
-}
-catch(e){
-
-if(!String(e.message).includes("404"))
-throw e;
-
-}
-
-}
-
-}
-
-
-async function deleteCases(){
-
-if(!selected.size){
-
-setStatus(
-"Sélectionne d'abord au moins un jour."
-);
-
-return;
-
-}
-
-if(!accessToken){
-
-setStatus(
-"Connecte-toi à Google avant de supprimer un cas."
-);
-
-return;
-
-}
-
-const calendarId=
-document.getElementById("calendarSelect").value;
-
-if(!calendarId){
-
-setStatus(
-"Choisis un agenda Google."
-);
-
-return;
-
-}
-
-const keys=
-[...selected].filter(
-key=>assignments.has(key)
-);
-
-if(!keys.length){
-
-setStatus(
-"Aucun cas à supprimer sur les jours sélectionnés."
-);
-
-selected.clear();
-
-render();
-
-return;
-
-}
-
-const label=
-keys.length===1
-?"ce cas"
-:`ces ${keys.length} cas`;
-
-if(!confirm(
-`Supprimer ${label} de Google Calendar ?`
-))
-return;
-
-setStatus(
-`Suppression de ${keys.length} cas…`
-);
-
-try{
-
-for(const key of keys){
-
-const id=
-eventIds.get(key);
-
-if(id){
 
 try{
 
@@ -753,7 +997,7 @@ await googleFetch(
 `https://www.googleapis.com/calendar/v3/calendars/${
 encodeURIComponent(calendarId)
 }/events/${
-encodeURIComponent(id)
+encodeURIComponent(eventId)
 }`,
 
 {
@@ -763,43 +1007,28 @@ method:"DELETE"
 );
 
 }
-catch(e){
+catch(error){
 
-if(!String(e.message).includes("404"))
-throw e;
+if(
+!String(error.message).includes("404")
+){
 
-}
-
-}
-
-assignments.delete(key);
-eventIds.delete(key);
-
-}
-
-selected.clear();
-
-render();
-
-setStatus(
-`${keys.length} cas supprimé${
-keys.length>1?"s":""
-} de Google Calendar.`
-);
-
-}
-catch(e){
-
-console.error(e);
-
-setStatus(
-"Erreur lors de la suppression."
-);
+throw error;
 
 }
 
 }
 
+}
+
+
+/*
+REMPLACEMENT D'UN CAS
+
+L'ancien événement est supprimé.
+Puis le nouveau est créé.
+L'affichage local est actualisé immédiatement.
+*/
 
 async function applyCase(c){
 
@@ -824,7 +1053,9 @@ return;
 }
 
 const calendarId=
-document.getElementById("calendarSelect").value;
+document.getElementById(
+"calendarSelect"
+).value;
 
 if(!calendarId){
 
@@ -838,22 +1069,45 @@ return;
 
 rememberCalendar(calendarId);
 
-const keys=[...selected];
+const keys=
+[...selected];
 
 setStatus(
-`Remplacement de ${keys.length} cas…`
+`Modification de ${keys.length} cas…`
 );
 
 try{
 
 for(const key of keys){
 
-await deleteExistingForKey(
+/*
+1 — supprimer l'ancien événement
+*/
+
+await deleteEventForKey(
 key,
 calendarId
 );
 
-const [y,m,d]=
+/*
+2 — mise à jour IMMÉDIATE
+de l'affichage local
+*/
+
+assignments.delete(key);
+eventIds.delete(key);
+
+render();
+
+/*
+3 — créer le nouvel événement
+*/
+
+const [
+y,
+m,
+d
+]=
 key.split("-").map(Number);
 
 const body={
@@ -879,7 +1133,11 @@ casDate:key
 if(c.allDay){
 
 const next=
-new Date(y,m-1,d+1);
+new Date(
+y,
+m-1,
+d+1
+);
 
 const end=
 `${next.getFullYear()}-${
@@ -936,6 +1194,10 @@ body:JSON.stringify(body)
 
 );
 
+/*
+4 — affichage IMMÉDIAT du nouveau cas
+*/
+
 assignments.set(
 key,
 c.id
@@ -946,7 +1208,13 @@ key,
 created.id
 );
 
+render();
+
 }
+
+/*
+5 — on désélectionne
+*/
 
 selected.clear();
 
@@ -958,13 +1226,22 @@ keys.length>1?"s":""
 } dans Google Calendar.`
 );
 
-}
-catch(e){
+/*
+6 — vérification discrète avec Google
+*/
 
-console.error(e);
+setTimeout(
+()=>syncMonth(),
+1500
+);
+
+}
+catch(error){
+
+console.error(error);
 
 setStatus(
-"Erreur lors de l'enregistrement."
+"Erreur lors de la modification."
 );
 
 }
@@ -972,11 +1249,151 @@ setStatus(
 }
 
 
-document.getElementById("trash").onclick=
-deleteCases;
+/*
+POUBELLE
+*/
+
+async function deleteCases(){
+
+if(!selected.size){
+
+setStatus(
+"Sélectionne d'abord au moins un jour."
+);
+
+return;
+
+}
+
+if(!accessToken){
+
+setStatus(
+"Connecte-toi à Google avant de supprimer."
+);
+
+return;
+
+}
+
+const calendarId=
+document.getElementById(
+"calendarSelect"
+).value;
+
+if(!calendarId){
+
+setStatus(
+"Choisis un agenda Google."
+);
+
+return;
+
+}
+
+const keys=
+[...selected].filter(
+key=>assignments.has(key)
+);
+
+if(!keys.length){
+
+setStatus(
+"Aucun cas à supprimer sur les jours sélectionnés."
+);
+
+selected.clear();
+
+render();
+
+return;
+
+}
+
+const label=
+keys.length===1
+?"ce cas"
+:`ces ${keys.length} cas`;
+
+if(
+!confirm(
+`Supprimer ${label} de Google Calendar ?`
+)
+)
+return;
+
+setStatus(
+`Suppression de ${keys.length} cas…`
+);
+
+try{
+
+for(const key of keys){
+
+/*
+1 — suppression réelle Google
+*/
+
+await deleteEventForKey(
+key,
+calendarId
+);
+
+/*
+2 — suppression IMMÉDIATE
+dans notre calendrier
+*/
+
+assignments.delete(key);
+eventIds.delete(key);
+
+render();
+
+}
+
+/*
+3 — désélection
+*/
+
+selected.clear();
+
+render();
+
+setStatus(
+`${keys.length} cas supprimé${
+keys.length>1?"s":""
+} de Google Calendar.`
+);
+
+/*
+4 — vérification avec Google
+*/
+
+setTimeout(
+()=>syncMonth(),
+1500
+);
+
+}
+catch(error){
+
+console.error(error);
+
+setStatus(
+"Erreur lors de la suppression."
+);
+
+}
+
+}
 
 
-document.getElementById("auth").onclick=()=>{
+/*
+CONNEXION GOOGLE
+*/
+
+document.getElementById(
+"auth"
+).onclick=()=>{
 
 if(!tokenClient){
 
@@ -990,7 +1407,8 @@ return;
 
 tokenClient.requestAccessToken({
 
-prompt:accessToken
+prompt:
+accessToken
 ?""
 :"consent"
 
@@ -999,11 +1417,19 @@ prompt:accessToken
 };
 
 
-document.getElementById("calendarSelect").onchange=
+/*
+CHANGEMENT D'AGENDA
+*/
+
+document.getElementById(
+"calendarSelect"
+).onchange=
 async()=>{
 
 rememberCalendar(
-document.getElementById("calendarSelect").value
+document.getElementById(
+"calendarSelect"
+).value
 );
 
 await syncMonth();
@@ -1011,7 +1437,13 @@ await syncMonth();
 };
 
 
-document.getElementById("prev").onclick=
+/*
+MOIS PRÉCÉDENT
+*/
+
+document.getElementById(
+"prev"
+).onclick=
 async()=>{
 
 cursor.setMonth(
@@ -1027,7 +1459,13 @@ await syncMonth();
 };
 
 
-document.getElementById("next").onclick=
+/*
+MOIS SUIVANT
+*/
+
+document.getElementById(
+"next"
+).onclick=
 async()=>{
 
 cursor.setMonth(
@@ -1042,6 +1480,10 @@ await syncMonth();
 
 };
 
+
+/*
+INITIALISATION
+*/
 
 renderCases();
 
