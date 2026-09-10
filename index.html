@@ -5,12 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#ffffff">
 <title>Cas Calendar</title>
-
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#f5f6f8;color:#171717;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 .monthbar{position:sticky;top:0;z-index:5;height:52px;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #ddd;padding:6px 12px}
-.monthbar button{border:0;background:#eef0f3;border-radius:10px;font-size:24px;width:40px;height:38px}
+.monthbar button{border:0;background:#eef0f3;border-radius:10px;font-size:24px;width:40px;height:38px;line-height:1}
 .month{font-weight:750;font-size:17px;text-transform:capitalize}
 main{padding:10px 10px 20px;max-width:700px;margin:auto}
 .weekdays,.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
@@ -44,16 +43,16 @@ footer{margin-top:12px;color:#777;font-size:11px;text-align:center}
 <body>
 
 <div class="monthbar">
-<button id="prev">‹</button>
+<button id="prev" aria-label="Mois précédent">‹</button>
 <div class="month" id="month"></div>
-<button id="next">›</button>
+<button id="next" aria-label="Mois suivant">›</button>
 </div>
 
 <main>
 
 <div class="top">
 <button id="auth" class="auth">Se connecter à Google</button>
-<select id="calendarSelect" hidden></select>
+<select id="calendarSelect" hidden aria-label="Agenda Google"></select>
 </div>
 
 <div class="status" id="status">
@@ -61,8 +60,13 @@ Connecte-toi à Google pour créer réellement les événements.
 </div>
 
 <div class="weekdays">
-<div>LUN</div><div>MAR</div><div>MER</div>
-<div>JEU</div><div>VEN</div><div>SAM</div><div>DIM</div>
+<div>LUN</div>
+<div>MAR</div>
+<div>MER</div>
+<div>JEU</div>
+<div>VEN</div>
+<div>SAM</div>
+<div>DIM</div>
 </div>
 
 <div class="calendar" id="calendar"></div>
@@ -72,12 +76,16 @@ Aucun jour sélectionné
 </div>
 
 <div class="actions">
-<button id="trash" class="trash" disabled>🗑️ Supprimer le cas</button>
+<button id="trash" class="trash" disabled>
+🗑️ Supprimer le cas
+</button>
 </div>
 
 <div class="cases" id="cases"></div>
 
-<footer>Cas Calendar V1.7</footer>
+<footer>
+Cas Calendar V1.7
+</footer>
 
 </main>
 
@@ -113,16 +121,23 @@ const eventIds=new Map();
 let accessToken=null;
 let tokenClient=null;
 
+/* MÉMOIRE LOCALE */
 const STORAGE_CALENDAR="casCalendar.selectedCalendarId";
+const STORAGE_EVENTS="casCalendar.eventIds";
 
 const pad=n=>String(n).padStart(2,"0");
 
-const keyOf=(y,m,d)=>`${y}-${pad(m+1)}-${pad(d)}`;
+const keyOf=(y,m,d)=>
+`${y}-${pad(m+1)}-${pad(d)}`;
 
 const tz=
-Intl.DateTimeFormat().resolvedOptions().timeZone||
+Intl.DateTimeFormat()
+.resolvedOptions()
+.timeZone||
 "Europe/Paris";
 
+
+/* AFFICHAGE DU CALENDRIER */
 
 function render(){
 
@@ -141,14 +156,17 @@ const first=
 const days=
 new Date(y,m+1,0).getDate();
 
-const cal=document.getElementById("calendar");
+const cal=
+document.getElementById("calendar");
 
 cal.innerHTML="";
 
 for(let i=0;i<first;i++){
 
 const e=document.createElement("div");
+
 e.className="day empty";
+
 cal.appendChild(e);
 
 }
@@ -162,33 +180,44 @@ const key=keyOf(y,m,d);
 const e=document.createElement("div");
 
 e.className=
-"day"+(selected.has(key)?" selected":"");
+"day"+
+(selected.has(key)?" selected":"");
 
 if(
 y===today.getFullYear()&&
 m===today.getMonth()&&
 d===today.getDate()
 ){
+
 e.classList.add("today");
+
 }
 
 const n=document.createElement("div");
+
 n.className="num";
+
 n.textContent=d;
+
 e.appendChild(n);
 
 if(assignments.has(key)){
 
-const c=cases.find(
+const c=
+cases.find(
 x=>x.id===assignments.get(key)
 );
 
 if(c){
 
-const b=document.createElement("span");
-const track=document.createElement("span");
+const b=
+document.createElement("span");
+
+const track=
+document.createElement("span");
 
 b.className="badge";
+
 track.className="badge-track";
 
 track.textContent=
@@ -197,6 +226,7 @@ c.allDay
 :`${c.name} · ${c.start} → ${c.end}`;
 
 b.appendChild(track);
+
 e.appendChild(b);
 
 if(!c.allDay){
@@ -245,37 +275,52 @@ updateCount();
 }
 
 
+/* COMPTEUR */
+
 function updateCount(){
 
 const n=selected.size;
 
-document.getElementById("selectedCount").textContent=
+document.getElementById(
+"selectedCount"
+).textContent=
+
 n===0
 ?"Aucun jour sélectionné"
 :`${n} jour${n>1?"s":""} sélectionné${n>1?"s":""}`;
 
-document.getElementById("trash").disabled=
+document.getElementById(
+"trash"
+).disabled=
 n===0;
 
 }
 
 
+/* MESSAGE */
+
 function setStatus(text){
 
-document.getElementById("status").textContent=text;
+document.getElementById(
+"status"
+).textContent=text;
 
 }
 
 
+/* BOUTONS DES CAS */
+
 function renderCases(){
 
-const box=document.getElementById("cases");
+const box=
+document.getElementById("cases");
 
 box.innerHTML="";
 
 cases.forEach(c=>{
 
-const b=document.createElement("button");
+const b=
+document.createElement("button");
 
 b.className="case";
 
@@ -286,7 +331,8 @@ c.allDay
 :c.start+" → "+c.end
 }</small>`;
 
-b.onclick=()=>applyCase(c);
+b.onclick=
+()=>applyCase(c);
 
 box.appendChild(b);
 
@@ -294,6 +340,90 @@ box.appendChild(b);
 
 }
 
+
+/* MÉMOIRE DES ID GOOGLE */
+
+function loadStoredEventIds(){
+
+try{
+
+const data=
+JSON.parse(
+localStorage.getItem(
+STORAGE_EVENTS
+)||
+"{}"
+);
+
+Object.entries(data).forEach(
+([key,id])=>{
+eventIds.set(key,id);
+}
+);
+
+}
+catch(e){
+
+console.error(e);
+
+}
+
+}
+
+
+function saveEventIds(){
+
+try{
+
+const data={};
+
+eventIds.forEach(
+(id,key)=>{
+data[key]=id;
+}
+);
+
+localStorage.setItem(
+STORAGE_EVENTS,
+JSON.stringify(data)
+);
+
+}
+catch(e){
+
+console.error(e);
+
+}
+
+}
+
+
+/* MÉMOIRE DE L'AGENDA */
+
+function rememberCalendar(id){
+
+if(id){
+
+localStorage.setItem(
+STORAGE_CALENDAR,
+id
+);
+
+}
+
+}
+
+
+function rememberedCalendar(){
+
+return localStorage.getItem(
+STORAGE_CALENDAR
+)||"";
+
+}
+
+
+/* GOOGLE */
 
 function initGoogle(){
 
@@ -303,7 +433,10 @@ if(
 !window.google.accounts.oauth2
 ){
 
-setTimeout(initGoogle,250);
+setTimeout(
+initGoogle,
+250
+);
 
 return;
 
@@ -320,19 +453,25 @@ callback:async response=>{
 
 if(response.error){
 
-setStatus("Autorisation Google refusée.");
+setStatus(
+"Autorisation Google refusée."
+);
 
 return;
 
 }
 
-accessToken=response.access_token;
+accessToken=
+response.access_token;
 
-document.getElementById("auth").textContent=
+document.getElementById(
+"auth"
+).textContent=
 "Google connecté";
 
-document.getElementById("auth")
-.classList.add("connected");
+document.getElementById(
+"auth"
+).classList.add("connected");
 
 await loadCalendars();
 
@@ -343,10 +482,17 @@ await loadCalendars();
 }
 
 
-async function googleFetch(url,options={}){
+/* REQUÊTES GOOGLE */
+
+async function googleFetch(
+url,
+options={}
+){
 
 const headers=
-new Headers(options.headers||{});
+new Headers(
+options.headers||{}
+);
 
 headers.set(
 "Authorization",
@@ -367,8 +513,13 @@ headers
 }
 );
 
-if(!response.ok)
-throw new Error(await response.text());
+if(!response.ok){
+
+throw new Error(
+await response.text()
+);
+
+}
 
 return response.status===204
 ?null
@@ -377,229 +528,80 @@ return response.status===204
 }
 
 
-function monthRange(){
-
-const y=cursor.getFullYear();
-const m=cursor.getMonth();
-
-return{
-start:new Date(y,m,1).toISOString(),
-end:new Date(y,m+1,1).toISOString()
-};
-
-}
-
-
-function nextDateParts(key){
-
-const [y,m,d]=key.split("-").map(Number);
-
-const n=new Date(y,m-1,d+1);
-
-return[
-n.getFullYear(),
-n.getMonth(),
-n.getDate()
-];
-
-}
-
-
-function eventMatchesCase(event,c,key){
-
-if(
-!event||
-event.status==="cancelled"||
-event.summary!==c.name
-)
-return false;
-
-if(
-event.extendedProperties?.private?.casCalendar==="1"&&
-event.extendedProperties.private.casDate===key
-)
-return true;
-
-if(c.allDay){
-
-return(
-event.start?.date===key&&
-event.end?.date===
-keyOf(...nextDateParts(key))
-);
-
-}
-
-return(
-event.start?.dateTime?.startsWith(
-`${key}T${c.start}:`
-)&&
-event.end?.dateTime?.startsWith(
-`${key}T${c.end}:`
-)
-);
-
-}
-
-
-function rememberCalendar(id){
-
-if(id)
-localStorage.setItem(
-STORAGE_CALENDAR,
-id
-);
-
-}
-
-
-function rememberedCalendar(){
-
-return localStorage.getItem(
-STORAGE_CALENDAR
-)||"";
-
-}
-
-
-async function syncMonth(){
-
-if(!accessToken)
-return;
-
-const calendarId=
-document.getElementById("calendarSelect").value;
-
-if(!calendarId)
-return;
-
-try{
-
-const {start,end}=monthRange();
-
-const url=
-`https://www.googleapis.com/calendar/v3/calendars/${
-encodeURIComponent(calendarId)
-}/events?timeMin=${
-encodeURIComponent(start)
-}&timeMax=${
-encodeURIComponent(end)
-}&singleEvents=true&showDeleted=false&maxResults=2500`;
-
-const data=await googleFetch(url);
-
-assignments.clear();
-eventIds.clear();
-
-for(const event of(data.items||[])){
-
-const key=
-event.extendedProperties?.private?.casDate||
-event.start?.date||
-event.start?.dateTime?.slice(0,10);
-
-const caseId=
-Number(
-event.extendedProperties?.private?.casId||0
-);
-
-if(
-key&&
-caseId&&
-cases.some(c=>c.id===caseId)
-){
-
-assignments.set(key,caseId);
-eventIds.set(key,event.id);
-continue;
-
-}
-
-if(key){
-
-const c=cases.find(
-x=>x.name===event.summary
-);
-
-if(c&&eventMatchesCase(event,c,key)){
-
-assignments.set(key,c.id);
-eventIds.set(key,event.id);
-
-}
-
-}
-
-}
-
-render();
-
-setStatus("Calendrier synchronisé avec Google.");
-
-}
-catch(error){
-
-console.error(error);
-
-setStatus(
-"Impossible de lire les événements Google Calendar."
-);
-
-}
-
-}
-
+/* CHARGEMENT DES AGENDAS */
 
 async function loadCalendars(){
 
 try{
 
-setStatus("Chargement de tes agendas…");
+setStatus(
+"Chargement de tes agendas…"
+);
 
-const data=await googleFetch(
+const data=
+await googleFetch(
 "https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer&showDeleted=false"
 );
 
 const select=
-document.getElementById("calendarSelect");
+document.getElementById(
+"calendarSelect"
+);
 
 select.innerHTML="";
 
-(data.items||[]).forEach(calendar=>{
+(data.items||[]).forEach(
+calendar=>{
 
 const option=
 document.createElement("option");
 
-option.value=calendar.id;
+option.value=
+calendar.id;
 
 option.textContent=
 calendar.summary+
-(calendar.primary?" (principal)":"");
+(
+calendar.primary
+?" (principal)"
+:""
+);
 
 select.appendChild(option);
 
-});
+}
+);
 
 select.hidden=
 !(data.items&&data.items.length);
 
 if(data.items?.length){
 
-const saved=rememberedCalendar();
+const saved=
+rememberedCalendar();
 
-const found=data.items.find(
+const found=
+data.items.find(
 c=>c.id===saved
 );
 
 select.value=
 found
 ?saved
-:(data.items.find(c=>c.primary)?.id||
-data.items[0].id);
+:(
+data.items.find(
+c=>c.primary
+)?.id||
+data.items[0].id
+);
 
-rememberCalendar(select.value);
+rememberCalendar(
+select.value
+);
 
-await syncMonth();
+setStatus(
+"Agenda prêt."
+);
 
 }
 else{
@@ -624,9 +626,7 @@ setStatus(
 }
 
 
-/*
-SUPPRESSION GOOGLE EN ARRIÈRE-PLAN
-*/
+/* SUPPRESSION GOOGLE */
 
 async function deleteGoogleEvent(
 eventId,
@@ -655,17 +655,108 @@ method:"DELETE"
 }
 catch(error){
 
-if(!String(error.message).includes("404"))
+if(
+!String(error.message).includes("404")
+){
+
 throw error;
 
 }
 
 }
 
+}
 
-/*
-CRÉATION GOOGLE
-*/
+
+/* SI L'ID N'EST PAS CONNU,
+ON LE RETROUVE */
+
+async function findEventForKey(
+key,
+calendarId
+){
+
+const known=
+eventIds.get(key);
+
+if(known)
+return known;
+
+const [y,m,d]=
+key.split("-").map(Number);
+
+const start=
+new Date(
+y,
+m-1,
+d
+).toISOString();
+
+const end=
+new Date(
+y,
+m-1,
+d+1
+).toISOString();
+
+const url=
+`https://www.googleapis.com/calendar/v3/calendars/${
+encodeURIComponent(calendarId)
+}/events?timeMin=${
+encodeURIComponent(start)
+}&timeMax=${
+encodeURIComponent(end)
+}&singleEvents=true&showDeleted=false&maxResults=100`;
+
+const data=
+await googleFetch(url);
+
+for(
+const event of(data.items||[])
+){
+
+if(event.status==="cancelled")
+continue;
+
+const c=
+cases.find(
+x=>x.name===event.summary
+);
+
+if(!c)
+continue;
+
+if(
+c.allDay&&
+event.start?.date===key
+){
+
+return event.id;
+
+}
+
+if(
+!c.allDay&&
+event.start?.dateTime?.startsWith(
+`${key}T${c.start}:`
+)&&
+event.end?.dateTime?.startsWith(
+`${key}T${c.end}:`
+)
+){
+
+return event.id;
+
+}
+
+}
+
+return null;
+
+}
+
+
+/* CRÉATION GOOGLE */
 
 async function createGoogleEvent(
 c,
@@ -673,10 +764,12 @@ key,
 calendarId
 ){
 
-const [y,m,d]=key.split("-").map(Number);
+const [y,m,d]=
+key.split("-").map(Number);
 
 const body={
 summary:c.name,
+
 extendedProperties:{
 private:{
 casCalendar:"1",
@@ -684,11 +777,17 @@ casId:String(c.id),
 casDate:key
 }
 }
+
 };
 
 if(c.allDay){
 
-const next=new Date(y,m-1,d+1);
+const next=
+new Date(
+y,
+m-1,
+d+1
+);
 
 body.start={
 date:key
@@ -707,12 +806,14 @@ pad(next.getDate())
 else{
 
 body.start={
-dateTime:`${key}T${c.start}:00`,
+dateTime:
+`${key}T${c.start}:00`,
 timeZone:tz
 };
 
 body.end={
-dateTime:`${key}T${c.end}:00`,
+dateTime:
+`${key}T${c.end}:00`,
 timeZone:tz
 };
 
@@ -734,12 +835,7 @@ body:JSON.stringify(body)
 }
 
 
-/*
-CHANGEMENT DE CAS
-
-L'INTERFACE EST MODIFIÉE AVANT
-LES APPELS GOOGLE.
-*/
+/* CHANGEMENT DE CAS */
 
 async function applyCase(c){
 
@@ -764,11 +860,15 @@ return;
 }
 
 const calendarId=
-document.getElementById("calendarSelect").value;
+document.getElementById(
+"calendarSelect"
+).value;
 
 if(!calendarId){
 
-setStatus("Choisis un agenda Google.");
+setStatus(
+"Choisis un agenda Google."
+);
 
 return;
 
@@ -776,42 +876,43 @@ return;
 
 rememberCalendar(calendarId);
 
-const keys=[...selected];
+const keys=
+[...selected];
 
 
 /*
-On mémorise les anciens événements.
+ON GARDE L'ANCIEN ÉTAT
+POUR POUVOIR RESTAURER EN CAS D'ERREUR
 */
 
-const oldEvents=keys.map(key=>({
+const old=
+keys.map(key=>({
 
 key:key,
 
-oldCase:
-assignments.has(key)
-?assignments.get(key)
-:null,
+caseId:
+assignments.get(key)||null,
 
-oldEventId:
+eventId:
 eventIds.get(key)||null
 
 }));
 
 
 /*
-MISE À JOUR IMMÉDIATE DE L'INTERFACE
+MISE À JOUR IMMÉDIATE DE L'ÉCRAN
 */
 
-for(const item of oldEvents){
+keys.forEach(key=>{
 
 assignments.set(
-item.key,
+key,
 c.id
 );
 
-eventIds.delete(item.key);
+eventIds.delete(key);
 
-}
+});
 
 selected.clear();
 
@@ -820,29 +921,60 @@ render();
 setStatus(
 `${keys.length} cas modifié${
 keys.length>1?"s":""
-} — synchronisation Google…`
+} — enregistrement…`
 );
 
 
 /*
-GOOGLE TRAVAILLE MAINTENANT
-EN ARRIÈRE-PLAN
+GOOGLE TRAVAILLE APRÈS
 */
 
 (async()=>{
 
 try{
 
-for(const item of oldEvents){
+for(const item of old){
 
-if(item.oldEventId){
+let id=
+item.eventId;
 
-await deleteGoogleEvent(
-item.oldEventId,
+
+/*
+Si on ne connaît pas l'ancien ID,
+on le recherche seulement ici.
+*/
+
+if(
+!id&&
+item.caseId
+){
+
+id=
+await findEventForKey(
+item.key,
 calendarId
 );
 
 }
+
+
+/*
+SUPPRESSION DE L'ANCIEN
+*/
+
+if(id){
+
+await deleteGoogleEvent(
+id,
+calendarId
+);
+
+}
+
+
+/*
+CRÉATION DU NOUVEAU
+*/
 
 const created=
 await createGoogleEvent(
@@ -858,9 +990,12 @@ created.id
 
 }
 
+
 /*
-On ne fait PAS de sync complète ici.
+SAUVEGARDE LOCALE
 */
+
+saveEventIds();
 
 setStatus(
 `${keys.length} cas enregistré${
@@ -873,18 +1008,18 @@ catch(error){
 
 console.error(error);
 
+
 /*
-En cas d'erreur Google,
-on restaure l'ancien état.
+RESTAURATION
 */
 
-for(const item of oldEvents){
+for(const item of old){
 
-if(item.oldCase){
+if(item.caseId){
 
 assignments.set(
 item.key,
-item.oldCase
+item.caseId
 );
 
 }
@@ -896,16 +1031,25 @@ item.key
 
 }
 
-if(item.oldEventId){
+if(item.eventId){
 
 eventIds.set(
 item.key,
-item.oldEventId
+item.eventId
+);
+
+}
+else{
+
+eventIds.delete(
+item.key
 );
 
 }
 
 }
+
+saveEventIds();
 
 render();
 
@@ -920,11 +1064,7 @@ setStatus(
 }
 
 
-/*
-SUPPRESSION
-
-L'INTERFACE DISPARAÎT IMMÉDIATEMENT.
-*/
+/* POUBELLE */
 
 async function deleteCases(){
 
@@ -949,11 +1089,15 @@ return;
 }
 
 const calendarId=
-document.getElementById("calendarSelect").value;
+document.getElementById(
+"calendarSelect"
+).value;
 
 if(!calendarId){
 
-setStatus("Choisis un agenda Google.");
+setStatus(
+"Choisis un agenda Google."
+);
 
 return;
 
@@ -967,6 +1111,7 @@ key=>assignments.has(key)
 if(!keys.length){
 
 selected.clear();
+
 render();
 
 setStatus(
@@ -977,68 +1122,101 @@ return;
 
 }
 
-const oldEvents=keys.map(key=>({
-
-key:key,
-
-oldCase:assignments.get(key),
-
-oldEventId:eventIds.get(key)||null
-
-}));
-
 if(
 !confirm(
 keys.length===1
-?"Supprimer ce cas de Google Calendar ?"
-:`Supprimer ces ${keys.length} cas de Google Calendar ?`
+?
+"Supprimer ce cas de Google Calendar ?"
+:
+`Supprimer ces ${keys.length} cas de Google Calendar ?`
 )
 )
 return;
 
 
 /*
-MISE À JOUR IMMÉDIATE
+SAUVEGARDE POUR RESTAURATION
 */
 
-for(const item of oldEvents){
+const old=
+keys.map(key=>({
 
-assignments.delete(item.key);
-eventIds.delete(item.key);
+key:key,
 
-}
+caseId:
+assignments.get(key),
+
+eventId:
+eventIds.get(key)||null
+
+}));
+
+
+/*
+DISPARITION IMMÉDIATE DE L'ÉCRAN
+*/
+
+keys.forEach(key=>{
+
+assignments.delete(key);
+
+eventIds.delete(key);
+
+});
 
 selected.clear();
 
 render();
 
+saveEventIds();
+
 setStatus(
 `${keys.length} cas supprimé${
 keys.length>1?"s":""
-} — synchronisation Google…`
+} — suppression Google…`
 );
 
 
 /*
-SUPPRESSION GOOGLE EN ARRIÈRE-PLAN
+SUPPRESSION EN ARRIÈRE-PLAN
 */
 
 (async()=>{
 
 try{
 
-for(const item of oldEvents){
+for(const item of old){
 
-if(item.oldEventId){
+let id=
+item.eventId;
+
+
+/*
+Si nécessaire, retrouver l'événement.
+*/
+
+if(!id){
+
+id=
+await findEventForKey(
+item.key,
+calendarId
+);
+
+}
+
+if(id){
 
 await deleteGoogleEvent(
-item.oldEventId,
+id,
 calendarId
 );
 
 }
 
 }
+
+saveEventIds();
 
 setStatus(
 `${keys.length} cas supprimé${
@@ -1051,27 +1229,30 @@ catch(error){
 
 console.error(error);
 
+
 /*
-RESTAURATION SI GOOGLE ÉCHOUE
+RESTAURATION SI GOOGLE REFUSE
 */
 
-for(const item of oldEvents){
+for(const item of old){
 
 assignments.set(
 item.key,
-item.oldCase
+item.caseId
 );
 
-if(item.oldEventId){
+if(item.eventId){
 
 eventIds.set(
 item.key,
-item.oldEventId
+item.eventId
 );
 
 }
 
 }
+
+saveEventIds();
 
 render();
 
@@ -1086,11 +1267,11 @@ setStatus(
 }
 
 
-/*
-BOUTON GOOGLE
-*/
+/* BOUTON GOOGLE */
 
-document.getElementById("auth").onclick=()=>{
+document.getElementById(
+"auth"
+).onclick=()=>{
 
 if(!tokenClient){
 
@@ -1104,7 +1285,8 @@ return;
 
 tokenClient.requestAccessToken({
 
-prompt:accessToken
+prompt:
+accessToken
 ?""
 :"consent"
 
@@ -1113,41 +1295,34 @@ prompt:accessToken
 };
 
 
-/*
-AGENDA
-*/
+/* CHANGEMENT D'AGENDA */
 
 document.getElementById(
 "calendarSelect"
-).onchange=async()=>{
+).onchange=()=>{
 
-const id=
+rememberCalendar(
 document.getElementById(
 "calendarSelect"
-).value;
-
-rememberCalendar(id);
-
-await syncMonth();
+).value
+);
 
 };
 
 
-/*
-POUBELLE
-*/
+/* POUBELLE */
 
 document.getElementById(
 "trash"
-).onclick=deleteCases;
+).onclick=
+deleteCases;
 
 
-/*
-MOIS PRÉCÉDENT
-*/
+/* MOIS PRÉCÉDENT */
 
-document.getElementById("prev").onclick=
-async()=>{
+document.getElementById(
+"prev"
+).onclick=()=>{
 
 cursor.setMonth(
 cursor.getMonth()-1
@@ -1157,17 +1332,14 @@ selected.clear();
 
 render();
 
-await syncMonth();
-
 };
 
 
-/*
-MOIS SUIVANT
-*/
+/* MOIS SUIVANT */
 
-document.getElementById("next").onclick=
-async()=>{
+document.getElementById(
+"next"
+).onclick=()=>{
 
 cursor.setMonth(
 cursor.getMonth()+1
@@ -1177,17 +1349,17 @@ selected.clear();
 
 render();
 
-await syncMonth();
-
 };
 
 
-/*
-INITIALISATION
-*/
+/* INITIALISATION */
+
+loadStoredEventIds();
 
 renderCases();
+
 render();
+
 initGoogle();
 
 </script>
