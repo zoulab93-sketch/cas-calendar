@@ -24,6 +24,9 @@ main{padding:10px 10px 20px;max-width:700px;margin:auto}
 .badge-track.marquee{animation:marquee 5.5s linear infinite}
 @keyframes marquee{0%,15%{transform:translateX(0)}85%,100%{transform:translateX(var(--scroll-distance))}}
 .selected-count{margin:12px 2px 8px;font-size:14px;font-weight:650}
+.actions{display:flex;gap:8px;margin:0 0 9px}
+.trash{border:0;border-radius:10px;padding:9px 13px;background:#ffe9e9;color:#b42318;font-weight:750;cursor:pointer}
+.trash:disabled{opacity:.45;cursor:default}
 .cases{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .case{border:0;border-radius:12px;padding:11px 4px;background:#fff;box-shadow:0 1px 3px #0001;font-weight:750;cursor:pointer;min-height:55px}
 .case small{display:block;font-size:9px;font-weight:500;color:#666;margin-top:3px;white-space:nowrap}
@@ -39,16 +42,16 @@ footer{margin-top:12px;color:#777;font-size:11px;text-align:center}
 <body>
 
 <div class="monthbar">
-<button id="prev" aria-label="Mois précédent">‹</button>
+<button id="prev">‹</button>
 <div class="month" id="month"></div>
-<button id="next" aria-label="Mois suivant">›</button>
+<button id="next">›</button>
 </div>
 
 <main>
 
 <div class="top">
 <button id="auth" class="auth">Se connecter à Google</button>
-<select id="calendarSelect" hidden aria-label="Agenda Google"></select>
+<select id="calendarSelect" hidden></select>
 </div>
 
 <div class="status" id="status">
@@ -56,13 +59,8 @@ Connecte-toi à Google pour créer réellement les événements.
 </div>
 
 <div class="weekdays">
-<div>LUN</div>
-<div>MAR</div>
-<div>MER</div>
-<div>JEU</div>
-<div>VEN</div>
-<div>SAM</div>
-<div>DIM</div>
+<div>LUN</div><div>MAR</div><div>MER</div>
+<div>JEU</div><div>VEN</div><div>SAM</div><div>DIM</div>
 </div>
 
 <div class="calendar" id="calendar"></div>
@@ -71,10 +69,16 @@ Connecte-toi à Google pour créer réellement les événements.
 Aucun jour sélectionné
 </div>
 
+<div class="actions">
+<button id="trash" class="trash" disabled>
+🗑️ Supprimer le cas
+</button>
+</div>
+
 <div class="cases" id="cases"></div>
 
 <footer>
-Cas Calendar V1.4 — remplacement des cas, agenda mémorisé et synchronisation
+Cas Calendar V1.5
 </footer>
 
 </main>
@@ -147,9 +151,7 @@ cal.innerHTML="";
 for(let i=0;i<first;i++){
 
 const e=document.createElement("div");
-
 e.className="day empty";
-
 cal.appendChild(e);
 
 }
@@ -174,9 +176,7 @@ d===today.getDate()
 e.classList.add("today");
 
 const n=document.createElement("div");
-
 n.className="num";
-
 n.textContent=d;
 
 e.appendChild(n);
@@ -198,7 +198,6 @@ c.allDay
 :`${c.name} · ${c.start} → ${c.end}`;
 
 b.appendChild(track);
-
 e.appendChild(b);
 
 if(!c.allDay)
@@ -251,6 +250,9 @@ document.getElementById("selectedCount").textContent=
 n===0
 ?"Aucun jour sélectionné"
 :`${n} jour${n>1?"s":""} sélectionné${n>1?"s":""}`;
+
+document.getElementById("trash").disabled=
+n===0;
 
 }
 
@@ -383,6 +385,23 @@ return {start,end};
 }
 
 
+function nextDateParts(key){
+
+const [y,m,d]=
+key.split("-").map(Number);
+
+const n=
+new Date(y,m-1,d+1);
+
+return[
+n.getFullYear(),
+n.getMonth(),
+n.getDate()
+];
+
+}
+
+
 function eventMatchesCase(e,c,key){
 
 if(
@@ -413,23 +432,6 @@ e.end?.dateTime?.startsWith(
 `${key}T${c.end}:`
 )
 );
-
-}
-
-
-function nextDateParts(key){
-
-const [y,m,d]=
-key.split("-").map(Number);
-
-const n=
-new Date(y,m-1,d+1);
-
-return[
-n.getFullYear(),
-n.getMonth(),
-n.getDate()
-];
 
 }
 
@@ -664,52 +666,135 @@ throw e;
 
 }
 
-const [y,m,d]=
-key.split("-").map(Number);
+}
 
-const next=
-new Date(y,m-1,d+1);
 
-const dayEnd=
-next.toISOString();
+async function deleteCases(){
 
-const dayStart=
-new Date(y,m-1,d).toISOString();
+if(!selected.size){
 
-const url=
-`https://www.googleapis.com/calendar/v3/calendars/${
-encodeURIComponent(calendarId)
-}/events?timeMin=${
-encodeURIComponent(dayStart)
-}&timeMax=${
-encodeURIComponent(dayEnd)
-}&singleEvents=true&showDeleted=false&maxResults=100`;
+setStatus(
+"Sélectionne d'abord au moins un jour."
+);
 
-const data=
-await googleFetch(url);
+return;
 
-for(const e of(data.items||[])){
+}
 
-const c=
-cases.find(x=>x.name===e.summary);
+if(!accessToken){
 
-if(
-c&&
-eventMatchesCase(e,c,key)
-){
+setStatus(
+"Connecte-toi à Google avant de supprimer un cas."
+);
+
+return;
+
+}
+
+const calendarId=
+document.getElementById("calendarSelect").value;
+
+if(!calendarId){
+
+setStatus(
+"Choisis un agenda Google."
+);
+
+return;
+
+}
+
+const keys=
+[...selected].filter(
+key=>assignments.has(key)
+);
+
+if(!keys.length){
+
+setStatus(
+"Aucun cas à supprimer sur les jours sélectionnés."
+);
+
+selected.clear();
+
+render();
+
+return;
+
+}
+
+const label=
+keys.length===1
+?"ce cas"
+:`ces ${keys.length} cas`;
+
+if(!confirm(
+`Supprimer ${label} de Google Calendar ?`
+))
+return;
+
+setStatus(
+`Suppression de ${keys.length} cas…`
+);
+
+try{
+
+for(const key of keys){
+
+const id=
+eventIds.get(key);
+
+if(id){
+
+try{
 
 await googleFetch(
+
 `https://www.googleapis.com/calendar/v3/calendars/${
 encodeURIComponent(calendarId)
 }/events/${
-encodeURIComponent(e.id)
+encodeURIComponent(id)
 }`,
+
 {
 method:"DELETE"
 }
+
 );
 
 }
+catch(e){
+
+if(!String(e.message).includes("404"))
+throw e;
+
+}
+
+}
+
+assignments.delete(key);
+eventIds.delete(key);
+
+}
+
+selected.clear();
+
+render();
+
+setStatus(
+`${keys.length} cas supprimé${
+keys.length>1?"s":""
+} de Google Calendar.`
+);
+
+}
+catch(e){
+
+console.error(e);
+
+setStatus(
+"Erreur lors de la suppression."
+);
 
 }
 
@@ -879,12 +964,16 @@ catch(e){
 console.error(e);
 
 setStatus(
-"Erreur lors de l'enregistrement. Vérifie l'autorisation Google et ton agenda."
+"Erreur lors de l'enregistrement."
 );
 
 }
 
 }
+
+
+document.getElementById("trash").onclick=
+deleteCases;
 
 
 document.getElementById("auth").onclick=()=>{
