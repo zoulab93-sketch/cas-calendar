@@ -37,28 +37,57 @@ footer{margin-top:12px;color:#777;font-size:11px;text-align:center}
 </style>
 </head>
 <body>
+
 <div class="monthbar">
 <button id="prev" aria-label="Mois précédent">‹</button>
 <div class="month" id="month"></div>
 <button id="next" aria-label="Mois suivant">›</button>
 </div>
+
 <main>
+
 <div class="top">
 <button id="auth" class="auth">Se connecter à Google</button>
 <select id="calendarSelect" hidden aria-label="Agenda Google"></select>
 </div>
-<div class="status" id="status">Connecte-toi à Google pour créer réellement les événements.</div>
-<div class="weekdays"><div>LUN</div><div>MAR</div><div>MER</div><div>JEU</div><div>VEN</div><div>SAM</div><div>DIM</div></div>
+
+<div class="status" id="status">
+Connecte-toi à Google pour créer réellement les événements.
+</div>
+
+<div class="weekdays">
+<div>LUN</div>
+<div>MAR</div>
+<div>MER</div>
+<div>JEU</div>
+<div>VEN</div>
+<div>SAM</div>
+<div>DIM</div>
+</div>
+
 <div class="calendar" id="calendar"></div>
-<div class="selected-count" id="selectedCount">Aucun jour sélectionné</div>
+
+<div class="selected-count" id="selectedCount">
+Aucun jour sélectionné
+</div>
+
 <div class="cases" id="cases"></div>
-<footer>Cas Calendar V1.4 — remplacement des cas, agenda mémorisé et synchronisation</footer>
+
+<footer>
+Cas Calendar V1.4 — remplacement des cas, agenda mémorisé et synchronisation
+</footer>
+
 </main>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+
 <script>
+
 const CLIENT_ID="298885465935-ok9fueua2c23l2p2f32uep6o1tcihbm4.apps.googleusercontent.com";
-const SCOPES="https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events";
+
+const SCOPES=
+"https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events";
+
 const cases=[
 {id:1,name:"Matin",start:"07:30",end:"14:45"},
 {id:2,name:"Soir",start:"11:00",end:"22:00"},
@@ -66,170 +95,872 @@ const cases=[
 {id:4,name:"DOM",start:"07:30",end:"18:00"},
 {id:5,name:"Consultation",start:"08:00",end:"17:00"},
 {id:6,name:"Formation",start:"09:00",end:"17:00"},
-{id:7,name:"RH",allDay:true},{id:8,name:"RTT",allDay:true},{id:9,name:"CA",allDay:true}
+{id:7,name:"RH",allDay:true},
+{id:8,name:"RTT",allDay:true},
+{id:9,name:"CA",allDay:true}
 ];
-let cursor=new Date();cursor.setDate(1);
-const selected=new Set(),assignments=new Map(),eventIds=new Map();
-let accessToken=null,tokenClient=null;
+
+let cursor=new Date();
+cursor.setDate(1);
+
+const selected=new Set();
+const assignments=new Map();
+const eventIds=new Map();
+
+let accessToken=null;
+let tokenClient=null;
+
 const STORAGE_CALENDAR="casCalendar.selectedCalendarId";
+
 const pad=n=>String(n).padStart(2,"0");
-const keyOf=(y,m,d)=>`${y}-${pad(m+1)}-${pad(d)}`;
-const tz=Intl.DateTimeFormat().resolvedOptions().timeZone||"Europe/Paris";
+
+const keyOf=(y,m,d)=>
+`${y}-${pad(m+1)}-${pad(d)}`;
+
+const tz=
+Intl.DateTimeFormat().resolvedOptions().timeZone||
+"Europe/Paris";
+
 
 function render(){
- const y=cursor.getFullYear(),m=cursor.getMonth();
- document.getElementById("month").textContent=new Intl.DateTimeFormat("fr-FR",{month:"long",year:"numeric"}).format(cursor);
- const first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate(),cal=document.getElementById("calendar");
- cal.innerHTML="";
- for(let i=0;i<first;i++){const e=document.createElement("div");e.className="day empty";cal.appendChild(e)}
- const today=new Date();
- for(let d=1;d<=days;d++){
-  const key=keyOf(y,m,d),e=document.createElement("div");e.className="day"+(selected.has(key)?" selected":"");
-  if(y===today.getFullYear()&&m===today.getMonth()&&d===today.getDate())e.classList.add("today");
-  const n=document.createElement("div");n.className="num";n.textContent=d;e.appendChild(n);
-  if(assignments.has(key)){
-   const c=cases.find(x=>x.id===assignments.get(key)),b=document.createElement("span"),track=document.createElement("span");
-   b.className="badge";track.className="badge-track";
-   track.textContent=c.allDay?c.name:`${c.name} · ${c.start} → ${c.end}`;
-   b.appendChild(track);e.appendChild(b);
-   if(!c.allDay)requestAnimationFrame(()=>{const overflow=track.scrollWidth-b.clientWidth;if(overflow>2){track.classList.add("marquee");track.style.setProperty("--scroll-distance",`-${overflow}px`)}})
-  }
-  e.onclick=()=>{selected.has(key)?selected.delete(key):selected.add(key);render()};
-  cal.appendChild(e);
- }
- updateCount();
+
+const y=cursor.getFullYear();
+const m=cursor.getMonth();
+
+document.getElementById("month").textContent=
+new Intl.DateTimeFormat("fr-FR",{
+month:"long",
+year:"numeric"
+}).format(cursor);
+
+const first=
+(new Date(y,m,1).getDay()+6)%7;
+
+const days=
+new Date(y,m+1,0).getDate();
+
+const cal=
+document.getElementById("calendar");
+
+cal.innerHTML="";
+
+for(let i=0;i<first;i++){
+
+const e=document.createElement("div");
+
+e.className="day empty";
+
+cal.appendChild(e);
+
 }
-function updateCount(){const n=selected.size;document.getElementById("selectedCount").textContent=n===0?"Aucun jour sélectionné":`${n} jour${n>1?"s":""} sélectionné${n>1?"s":""}`}
-function setStatus(t){document.getElementById("status").textContent=t}
+
+const today=new Date();
+
+for(let d=1;d<=days;d++){
+
+const key=keyOf(y,m,d);
+
+const e=document.createElement("div");
+
+e.className=
+"day"+
+(selected.has(key)?" selected":"");
+
+if(
+y===today.getFullYear()&&
+m===today.getMonth()&&
+d===today.getDate()
+)
+e.classList.add("today");
+
+const n=document.createElement("div");
+
+n.className="num";
+
+n.textContent=d;
+
+e.appendChild(n);
+
+if(assignments.has(key)){
+
+const c=
+cases.find(x=>x.id===assignments.get(key));
+
+const b=document.createElement("span");
+const track=document.createElement("span");
+
+b.className="badge";
+track.className="badge-track";
+
+track.textContent=
+c.allDay
+?c.name
+:`${c.name} · ${c.start} → ${c.end}`;
+
+b.appendChild(track);
+
+e.appendChild(b);
+
+if(!c.allDay)
+
+requestAnimationFrame(()=>{
+
+const overflow=
+track.scrollWidth-b.clientWidth;
+
+if(overflow>2){
+
+track.classList.add("marquee");
+
+track.style.setProperty(
+"--scroll-distance",
+`-${overflow}px`
+);
+
+}
+
+});
+
+}
+
+e.onclick=()=>{
+
+selected.has(key)
+?selected.delete(key)
+:selected.add(key);
+
+render();
+
+};
+
+cal.appendChild(e);
+
+}
+
+updateCount();
+
+}
+
+
+function updateCount(){
+
+const n=selected.size;
+
+document.getElementById("selectedCount").textContent=
+
+n===0
+?"Aucun jour sélectionné"
+:`${n} jour${n>1?"s":""} sélectionné${n>1?"s":""}`;
+
+}
+
+
+function setStatus(t){
+
+document.getElementById("status").textContent=t;
+
+}
+
+
 function renderCases(){
- const box=document.getElementById("cases");
- cases.forEach(c=>{
-  const b=document.createElement("button");b.className="case";
-  b.innerHTML=`${c.name}<small>${c.allDay?"Journée entière":c.start+" → "+c.end}</small>`;
-  b.onclick=()=>applyCase(c);box.appendChild(b);
- })
+
+const box=
+document.getElementById("cases");
+
+cases.forEach(c=>{
+
+const b=document.createElement("button");
+
+b.className="case";
+
+b.innerHTML=
+`${c.name}<small>${
+c.allDay
+?"Journée entière"
+:c.start+" → "+c.end
+}</small>`;
+
+b.onclick=()=>applyCase(c);
+
+box.appendChild(b);
+
+});
+
 }
+
+
 function initGoogle(){
- if(!window.google?.accounts?.oauth2){setTimeout(initGoogle,250);return}
- tokenClient=google.accounts.oauth2.initTokenClient({
-  client_id:CLIENT_ID,scope:SCOPES,
-  callback:async r=>{if(r.error){setStatus("Autorisation Google refusée.");return}accessToken=r.access_token;document.getElementById("auth").textContent="Google connecté";document.getElementById("auth").classList.add("connected");await loadCalendars()}
- })
+
+if(!window.google?.accounts?.oauth2){
+
+setTimeout(initGoogle,250);
+
+return;
+
 }
+
+tokenClient=
+google.accounts.oauth2.initTokenClient({
+
+client_id:CLIENT_ID,
+
+scope:SCOPES,
+
+callback:async r=>{
+
+if(r.error){
+
+setStatus("Autorisation Google refusée.");
+
+return;
+
+}
+
+accessToken=r.access_token;
+
+document.getElementById("auth").textContent=
+"Google connecté";
+
+document.getElementById("auth")
+.classList.add("connected");
+
+await loadCalendars();
+
+}
+
+});
+
+}
+
+
 async function googleFetch(url,options={}){
- const headers=new Headers(options.headers||{});
- headers.set("Authorization","Bearer "+accessToken);headers.set("Content-Type","application/json");
- const r=await fetch(url,{...options,headers});if(!r.ok)throw new Error(await r.text());return r.status===204?null:r.json()
+
+const headers=
+new Headers(options.headers||{});
+
+headers.set(
+"Authorization",
+"Bearer "+accessToken
+);
+
+headers.set(
+"Content-Type",
+"application/json"
+);
+
+const r=
+await fetch(url,{
+...options,
+headers
+});
+
+if(!r.ok)
+throw new Error(await r.text());
+
+return r.status===204
+?null
+:r.json();
+
 }
+
+
 function monthRange(){
- const y=cursor.getFullYear(),m=cursor.getMonth();
- const start=`${y}-${pad(m+1)}-01T00:00:00`;
- const next=new Date(y,m+1,1);
- const end=`${next.getFullYear()}-${pad(next.getMonth()+1)}-01T00:00:00`;
- return {start,end};
+
+const y=cursor.getFullYear();
+const m=cursor.getMonth();
+
+const start=
+new Date(y,m,1).toISOString();
+
+const next=
+new Date(y,m+1,1);
+
+const end=
+next.toISOString();
+
+return {start,end};
+
 }
+
+
 function eventMatchesCase(e,c,key){
- if(!e || e.status==="cancelled" || e.summary!==c.name) return false;
- if(e.extendedProperties?.private?.casCalendar==="1" && e.extendedProperties.private.casDate===key) return true;
- if(c.allDay) return e.start?.date===key && e.end?.date===keyOf(...nextDateParts(key));
- return e.start?.dateTime?.startsWith(`${key}T${c.start}:`) && e.end?.dateTime?.startsWith(`${key}T${c.end}:`);
+
+if(
+!e||
+e.status==="cancelled"||
+e.summary!==c.name
+)
+return false;
+
+if(
+e.extendedProperties?.private?.casCalendar==="1"&&
+e.extendedProperties.private.casDate===key
+)
+return true;
+
+if(c.allDay)
+
+return(
+e.start?.date===key&&
+e.end?.date===keyOf(...nextDateParts(key))
+);
+
+return(
+e.start?.dateTime?.startsWith(
+`${key}T${c.start}:`
+)&&
+e.end?.dateTime?.startsWith(
+`${key}T${c.end}:`
+)
+);
+
 }
+
+
 function nextDateParts(key){
- const [y,m,d]=key.split("-").map(Number),n=new Date(y,m-1,d+1);return [n.getFullYear(),n.getMonth(),n.getDate()];
+
+const [y,m,d]=
+key.split("-").map(Number);
+
+const n=
+new Date(y,m-1,d+1);
+
+return[
+n.getFullYear(),
+n.getMonth(),
+n.getDate()
+];
+
 }
-function rememberCalendar(id){ if(id) localStorage.setItem(STORAGE_CALENDAR,id); }
-function rememberedCalendar(){ return localStorage.getItem(STORAGE_CALENDAR)||""; }
+
+
+function rememberCalendar(id){
+
+if(id)
+localStorage.setItem(
+STORAGE_CALENDAR,
+id
+);
+
+}
+
+
+function rememberedCalendar(){
+
+return localStorage.getItem(
+STORAGE_CALENDAR
+)||"";
+
+}
+
 
 async function syncMonth(){
- if(!accessToken) return;
- const calendarId=document.getElementById("calendarSelect").value;
- if(!calendarId) return;
- try{
-  const {start,end}=monthRange();
-  const url=`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?timeMin=${encodeURIComponent(start)}&timeMax=${encodeURIComponent(end)}&singleEvents=true&showDeleted=false&maxResults=2500`;
-  const data=await googleFetch(url);
-  assignments.clear();eventIds.clear();
-  for(const e of (data.items||[])){
-   const key=e.extendedProperties?.private?.casDate || (e.start?.date || e.start?.dateTime?.slice(0,10));
-   const cid=Number(e.extendedProperties?.private?.casId||0);
-   if(key && cid && cases.some(c=>c.id===cid)){
-    assignments.set(key,cid);eventIds.set(key,e.id);continue;
-   }
-   if(key){
-    const c=cases.find(x=>x.name===e.summary);
-    if(c && eventMatchesCase(e,c,key)){assignments.set(key,c.id);eventIds.set(key,e.id)}
-   }
-  }
-  render();
-  setStatus("Calendrier synchronisé avec Google.");
- }catch(e){console.error(e);setStatus("Impossible de lire les événements Google Calendar.")}
+
+if(!accessToken)
+return;
+
+const calendarId=
+document.getElementById("calendarSelect").value;
+
+if(!calendarId)
+return;
+
+try{
+
+const {start,end}=monthRange();
+
+const url=
+`https://www.googleapis.com/calendar/v3/calendars/${
+encodeURIComponent(calendarId)
+}/events?timeMin=${
+encodeURIComponent(start)
+}&timeMax=${
+encodeURIComponent(end)
+}&singleEvents=true&showDeleted=false&maxResults=2500`;
+
+const data=
+await googleFetch(url);
+
+assignments.clear();
+eventIds.clear();
+
+for(const e of(data.items||[])){
+
+const key=
+e.extendedProperties?.private?.casDate||
+(
+e.start?.date||
+e.start?.dateTime?.slice(0,10)
+);
+
+const cid=
+Number(
+e.extendedProperties?.private?.casId||0
+);
+
+if(
+key&&
+cid&&
+cases.some(c=>c.id===cid)
+){
+
+assignments.set(key,cid);
+eventIds.set(key,e.id);
+
+continue;
+
 }
+
+if(key){
+
+const c=
+cases.find(x=>x.name===e.summary);
+
+if(
+c&&
+eventMatchesCase(e,c,key)
+){
+
+assignments.set(key,c.id);
+eventIds.set(key,e.id);
+
+}
+
+}
+
+}
+
+render();
+
+setStatus(
+"Calendrier synchronisé avec Google."
+);
+
+}
+catch(e){
+
+console.error(e);
+
+setStatus(
+"Impossible de lire les événements Google Calendar."
+);
+
+}
+
+}
+
 
 async function loadCalendars(){
- try{
-  setStatus("Chargement de tes agendas…");
-  const data=await googleFetch("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer&showDeleted=false");
-  const sel=document.getElementById("calendarSelect");sel.innerHTML="";
-  (data.items||[]).forEach(c=>{const o=document.createElement("option");o.value=c.id;o.textContent=c.summary+(c.primary?" (principal)":"");sel.appendChild(o)});
-  sel.hidden=!(data.items&&data.items.length);
-  if(data.items?.length){
-   const saved=rememberedCalendar(),found=(data.items||[]).find(c=>c.id===saved);
-   sel.value=found?saved:(data.items.find(c=>c.primary)?.id||data.items[0].id);
-   rememberCalendar(sel.value);
-   await syncMonth();
-  }else setStatus("Aucun agenda modifiable trouvé.");
- }catch(e){console.error(e);setStatus("Impossible de charger les agendas Google.")}
+
+try{
+
+setStatus(
+"Chargement de tes agendas…"
+);
+
+const data=
+await googleFetch(
+"https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer&showDeleted=false"
+);
+
+const sel=
+document.getElementById("calendarSelect");
+
+sel.innerHTML="";
+
+(data.items||[]).forEach(c=>{
+
+const o=
+document.createElement("option");
+
+o.value=c.id;
+
+o.textContent=
+c.summary+
+(c.primary?" (principal)":"");
+
+sel.appendChild(o);
+
+});
+
+sel.hidden=
+!(data.items&&data.items.length);
+
+if(data.items?.length){
+
+const saved=
+rememberedCalendar();
+
+const found=
+(data.items||[]).find(
+c=>c.id===saved
+);
+
+sel.value=
+found
+?saved
+:(data.items.find(c=>c.primary)?.id||
+data.items[0].id);
+
+rememberCalendar(sel.value);
+
+await syncMonth();
+
+}
+else{
+
+setStatus(
+"Aucun agenda modifiable trouvé."
+);
+
 }
 
-async function deleteExistingForKey(key,calendarId){
- const oldId=eventIds.get(key);
- if(oldId){
-  try{await googleFetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(oldId)}`,{method:"DELETE"});return}
-  catch(e){if(!String(e.message).includes("404")) throw e;}
- }
- const [y,m,d]=key.split("-").map(Number),next=new Date(y,m-1,d+1);
- const dayEnd=`${next.getFullYear()}-${pad(next.getMonth()+1)}-${pad(next.getDate())}T00:00:00`;
- const dayStart=`${key}T00:00:00`;
- const url=`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?timeMin=${encodeURIComponent(dayStart)}&timeMax=${encodeURIComponent(dayEnd)}&singleEvents=true&showDeleted=false&maxResults=100`;
- const data=await googleFetch(url);
- for(const e of (data.items||[])){
-  const c=cases.find(x=>x.name===e.summary);
-  if(c && eventMatchesCase(e,c,key)) await googleFetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(e.id)}`,{method:"DELETE"});
- }
 }
+catch(e){
+
+console.error(e);
+
+setStatus(
+"Impossible de charger les agendas Google."
+);
+
+}
+
+}
+
+
+async function deleteExistingForKey(
+key,
+calendarId
+){
+
+const oldId=
+eventIds.get(key);
+
+if(oldId){
+
+try{
+
+await googleFetch(
+`https://www.googleapis.com/calendar/v3/calendars/${
+encodeURIComponent(calendarId)
+}/events/${
+encodeURIComponent(oldId)
+}`,
+{
+method:"DELETE"
+}
+);
+
+return;
+
+}
+catch(e){
+
+if(!String(e.message).includes("404"))
+throw e;
+
+}
+
+}
+
+const [y,m,d]=
+key.split("-").map(Number);
+
+const next=
+new Date(y,m-1,d+1);
+
+const dayEnd=
+next.toISOString();
+
+const dayStart=
+new Date(y,m-1,d).toISOString();
+
+const url=
+`https://www.googleapis.com/calendar/v3/calendars/${
+encodeURIComponent(calendarId)
+}/events?timeMin=${
+encodeURIComponent(dayStart)
+}&timeMax=${
+encodeURIComponent(dayEnd)
+}&singleEvents=true&showDeleted=false&maxResults=100`;
+
+const data=
+await googleFetch(url);
+
+for(const e of(data.items||[])){
+
+const c=
+cases.find(x=>x.name===e.summary);
+
+if(
+c&&
+eventMatchesCase(e,c,key)
+){
+
+await googleFetch(
+`https://www.googleapis.com/calendar/v3/calendars/${
+encodeURIComponent(calendarId)
+}/events/${
+encodeURIComponent(e.id)
+}`,
+{
+method:"DELETE"
+}
+);
+
+}
+
+}
+
+}
+
 
 async function applyCase(c){
- if(!selected.size){setStatus("Sélectionne d'abord au moins un jour.");return}
- if(!accessToken){setStatus("Connecte-toi à Google avant d'appliquer un cas.");return}
- const calendarId=document.getElementById("calendarSelect").value;
- if(!calendarId){setStatus("Choisis un agenda Google.");return}
- rememberCalendar(calendarId);
- const keys=[...selected];setStatus(`Remplacement de ${keys.length} cas…`);
- try{
-  for(const key of keys){
-   await deleteExistingForKey(key,calendarId);
-   const [y,m,d]=key.split("-").map(Number),body={
-    summary:c.name,
-    extendedProperties:{private:{casCalendar:"1",casId:String(c.id),casDate:key}}
-   };
-   if(c.allDay){
-    const next=new Date(y,m-1,d+1),end=`${next.getFullYear()}-${pad(next.getMonth()+1)}-${pad(next.getDate())}`;
-    body.start={date:key};body.end={date:end};
-   }else{
-    body.start={dateTime:`${key}T${c.start}:00`,timeZone:tz};
-    body.end={dateTime:`${key}T${c.end}:00`,timeZone:tz};
-   }
-   const created=await googleFetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,{method:"POST",body:JSON.stringify(body)});
-   assignments.set(key,c.id);eventIds.set(key,created.id);
-  }
-  selected.clear();render();setStatus(`${keys.length} cas enregistré${keys.length>1?"s":""} dans Google Calendar.`)
- }catch(e){console.error(e);setStatus("Erreur lors de l'enregistrement. Vérifie l'autorisation Google et ton agenda.")}
+
+if(!selected.size){
+
+setStatus(
+"Sélectionne d'abord au moins un jour."
+);
+
+return;
+
 }
-document.getElementById("auth").onclick=()=>{if(!tokenClient){setStatus("Google est encore en cours de chargement…");return}tokenClient.requestAccessToken({prompt:accessToken?"":"consent"})};
-document.getElementById("calendarSelect").onchange=async()=>{rememberCalendar(document.getElementById("calendarSelect").value);await syncMonth()};
-document.getElementById("prev").onclick=async()=>{cursor.setMonth(cursor.getMonth()-1);selected.clear();render();await syncMonth()};
-document.getElementById("next").onclick=async()=>{cursor.setMonth(cursor.getMonth()+1);selected.clear();render();await syncMonth()};
-renderCases();render();initGoogle();
+
+if(!accessToken){
+
+setStatus(
+"Connecte-toi à Google avant d'appliquer un cas."
+);
+
+return;
+
+}
+
+const calendarId=
+document.getElementById("calendarSelect").value;
+
+if(!calendarId){
+
+setStatus(
+"Choisis un agenda Google."
+);
+
+return;
+
+}
+
+rememberCalendar(calendarId);
+
+const keys=[...selected];
+
+setStatus(
+`Remplacement de ${keys.length} cas…`
+);
+
+try{
+
+for(const key of keys){
+
+await deleteExistingForKey(
+key,
+calendarId
+);
+
+const [y,m,d]=
+key.split("-").map(Number);
+
+const body={
+
+summary:c.name,
+
+extendedProperties:{
+
+private:{
+
+casCalendar:"1",
+
+casId:String(c.id),
+
+casDate:key
+
+}
+
+}
+
+};
+
+if(c.allDay){
+
+const next=
+new Date(y,m-1,d+1);
+
+const end=
+`${next.getFullYear()}-${
+pad(next.getMonth()+1)
+}-${
+pad(next.getDate())
+}`;
+
+body.start={
+date:key
+};
+
+body.end={
+date:end
+};
+
+}
+else{
+
+body.start={
+
+dateTime:
+`${key}T${c.start}:00`,
+
+timeZone:tz
+
+};
+
+body.end={
+
+dateTime:
+`${key}T${c.end}:00`,
+
+timeZone:tz
+
+};
+
+}
+
+const created=
+await googleFetch(
+
+`https://www.googleapis.com/calendar/v3/calendars/${
+encodeURIComponent(calendarId)
+}/events`,
+
+{
+
+method:"POST",
+
+body:JSON.stringify(body)
+
+}
+
+);
+
+assignments.set(
+key,
+c.id
+);
+
+eventIds.set(
+key,
+created.id
+);
+
+}
+
+selected.clear();
+
+render();
+
+setStatus(
+`${keys.length} cas enregistré${
+keys.length>1?"s":""
+} dans Google Calendar.`
+);
+
+}
+catch(e){
+
+console.error(e);
+
+setStatus(
+"Erreur lors de l'enregistrement. Vérifie l'autorisation Google et ton agenda."
+);
+
+}
+
+}
+
+
+document.getElementById("auth").onclick=()=>{
+
+if(!tokenClient){
+
+setStatus(
+"Google est encore en cours de chargement…"
+);
+
+return;
+
+}
+
+tokenClient.requestAccessToken({
+
+prompt:accessToken
+?""
+:"consent"
+
+});
+
+};
+
+
+document.getElementById("calendarSelect").onchange=
+async()=>{
+
+rememberCalendar(
+document.getElementById("calendarSelect").value
+);
+
+await syncMonth();
+
+};
+
+
+document.getElementById("prev").onclick=
+async()=>{
+
+cursor.setMonth(
+cursor.getMonth()-1
+);
+
+selected.clear();
+
+render();
+
+await syncMonth();
+
+};
+
+
+document.getElementById("next").onclick=
+async()=>{
+
+cursor.setMonth(
+cursor.getMonth()+1
+);
+
+selected.clear();
+
+render();
+
+await syncMonth();
+
+};
+
+
+renderCases();
+
+render();
+
+initGoogle();
+
 </script>
+
 </body>
 </html>
