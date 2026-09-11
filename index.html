@@ -79,7 +79,7 @@ Aucun jour sélectionné
 <div class="cases" id="cases"></div>
 
 <footer>
-Cas Calendar V1.5 — connexion Google et création réelle des événements
+Cas Calendar V1.6 — connexion Google, synchronisation et création réelle des événements
 </footer>
 
 </main>
@@ -371,6 +371,82 @@ async function googleFetch(url,options={}){
 }
 
 
+async function loadEvents(){
+
+ const calendarId=
+ document.getElementById("calendarSelect").value;
+
+ if(!accessToken||!calendarId) return;
+
+ const y=cursor.getFullYear();
+ const m=cursor.getMonth();
+
+ const timeMin=
+ new Date(y,m,1).toISOString();
+
+ const timeMax=
+ new Date(y,m+1,1).toISOString();
+
+ try{
+
+  const data=
+  await googleFetch(
+   `https://www.googleapis.com/calendar/v3/calendars/${
+    encodeURIComponent(calendarId)
+   }/events?timeMin=${
+    encodeURIComponent(timeMin)
+   }&timeMax=${
+    encodeURIComponent(timeMax)
+   }&singleEvents=true&maxResults=250`
+  );
+
+  (data.items||[]).forEach(ev=>{
+
+   const c=
+   cases.find(x=>x.name===ev.summary);
+
+   if(!c) return;
+
+   const dateStr=
+   ev.start?.date||
+   ev.start?.dateTime?.slice(0,10);
+
+   if(!dateStr) return;
+
+   assignments.set(dateStr,{
+    caseId:c.id,
+    eventId:ev.id,
+    calendarId:calendarId
+   });
+
+  });
+
+  render();
+
+ }catch(e){
+
+  console.error(e);
+
+  setStatus(
+   "Impossible de charger les événements existants."
+  );
+
+ }
+
+}
+
+
+function maybeLoadEvents(){
+
+ if(
+  accessToken&&
+  document.getElementById("calendarSelect").value
+ )
+  loadEvents();
+
+}
+
+
 async function loadCalendars(){
 
  try{
@@ -420,6 +496,17 @@ async function loadCalendars(){
    :"Aucun agenda modifiable trouvé."
 
   );
+
+  sel.onchange=()=>{
+
+   assignments.clear();
+
+   loadEvents();
+
+  };
+
+  if(data.items&&data.items.length)
+   loadEvents();
 
  }catch(e){
 
@@ -719,6 +806,8 @@ document.getElementById("prev").onclick=()=>{
 
  render();
 
+ maybeLoadEvents();
+
 };
 
 
@@ -729,6 +818,8 @@ document.getElementById("next").onclick=()=>{
  selected.clear();
 
  render();
+
+ maybeLoadEvents();
 
 };
 
