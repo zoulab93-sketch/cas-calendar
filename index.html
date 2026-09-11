@@ -11,7 +11,7 @@ body{margin:0;background:#f5f6f8;color:#171717;font-family:system-ui,-apple-syst
 .monthbar{position:sticky;top:0;z-index:5;height:52px;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #ddd;padding:6px 12px}
 .monthbar button{border:0;background:#eef0f3;border-radius:10px;font-size:24px;width:40px;height:38px;line-height:1}
 .month{font-weight:750;font-size:17px;text-transform:capitalize}
-main{padding:10px 10px 20px;max-width:700px;margin:auto}
+main{padding:10px 10px 20px;max-width:700px;margin:auto;overflow:hidden}
 .weekdays,.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
 .weekdays div{text-align:center;font-size:10px;font-weight:750;color:#777;padding:3px 0}
 .day{height:64px;min-height:64px;max-height:64px;border:1px solid #ddd;background:#fff;border-radius:10px;padding:6px;position:relative;cursor:pointer;overflow:hidden}
@@ -36,7 +36,11 @@ main{padding:10px 10px 20px;max-width:700px;margin:auto}
 .delete-btn:active{transform:scale(.98)}
 #calendarSelect{flex:1;min-width:0;padding:9px;border:1px solid #ccc;border-radius:10px;background:#fff}
 .status{font-size:12px;color:#666;margin:0 2px 8px;min-height:18px}
-.account-line{font-size:13px;color:#444;margin:0 2px 8px}
+.account-line{font-size:13px;color:#444;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;text-align:right}
+@keyframes slideInFromRight{from{transform:translateX(26px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes slideInFromLeft{from{transform:translateX(-26px);opacity:0}to{transform:translateX(0);opacity:1}}
+.calendar.slide-next{animation:slideInFromRight .26s ease}
+.calendar.slide-prev{animation:slideInFromLeft .26s ease}
 footer{margin-top:12px;color:#777;font-size:11px;text-align:center}
 </style>
 </head>
@@ -53,10 +57,9 @@ footer{margin-top:12px;color:#777;font-size:11px;text-align:center}
 
 <div class="top">
 <button id="auth" class="auth">Se connecter à Google</button>
+<span class="account-line" id="accountLine" hidden></span>
 <select id="calendarSelect" hidden aria-label="Agenda Google"></select>
 </div>
-
-<div class="account-line" id="accountLine" hidden></div>
 
 <div class="status" id="status">
 Connecte-toi à Google pour créer réellement les événements.
@@ -83,7 +86,7 @@ Aucun jour sélectionné
 <div class="cases" id="cases"></div>
 
 <footer>
-Cas Calendar V2.0 — connexion Google, synchronisation, couleurs, swipe et création réelle des événements
+Cas Calendar V2.1 — connexion Google, synchronisation, couleurs, swipe animé et création réelle des événements
 </footer>
 
 </main>
@@ -169,7 +172,7 @@ Intl.DateTimeFormat().resolvedOptions().timeZone||
 "Europe/Paris";
 
 
-function render(){
+function render(direction){
 
  const y=cursor.getFullYear();
  const m=cursor.getMonth();
@@ -190,6 +193,10 @@ function render(){
  document.getElementById("calendar");
 
  cal.innerHTML="";
+
+ cal.classList.remove("slide-next","slide-prev");
+
+ void cal.offsetWidth;
 
  for(let i=0;i<first;i++){
 
@@ -309,6 +316,9 @@ function render(){
   cal.appendChild(e);
 
  }
+
+ if(direction==="next") cal.classList.add("slide-next");
+ else if(direction==="prev") cal.classList.add("slide-prev");
 
  updateCount();
 
@@ -887,7 +897,7 @@ function goPrevMonth(){
 
  selected.clear();
 
- render();
+ render("prev");
 
  maybeLoadEvents();
 
@@ -900,7 +910,7 @@ function goNextMonth(){
 
  selected.clear();
 
- render();
+ render("next");
 
  maybeLoadEvents();
 
