@@ -31,6 +31,8 @@ main{padding:10px 10px 20px;max-width:700px;margin:auto}
 .top{display:flex;gap:8px;align-items:center;margin:0 0 10px}
 .auth{border:0;border-radius:10px;padding:10px 13px;background:#111827;color:white;font-weight:700}
 .auth.connected{background:#e8f5e9;color:#176b2c}
+.delete-btn{border:0;border-radius:10px;padding:9px 13px;background:#fee2e2;color:#b91c1c;font-weight:700;cursor:pointer;margin:0 0 10px}
+.delete-btn:active{transform:scale(.98)}
 #calendarSelect{flex:1;min-width:0;padding:9px;border:1px solid #ccc;border-radius:10px;background:#fff}
 .status{font-size:12px;color:#666;margin:0 2px 8px;min-height:18px}
 footer{margin-top:12px;color:#777;font-size:11px;text-align:center}
@@ -72,10 +74,12 @@ Connecte-toi à Google pour créer réellement les événements.
 Aucun jour sélectionné
 </div>
 
+<button id="deleteBtn" class="delete-btn">🗑️ Supprimer</button>
+
 <div class="cases" id="cases"></div>
 
 <footer>
-Cas Calendar V1.4 — connexion Google et création réelle des événements
+Cas Calendar V1.5 — connexion Google et création réelle des événements
 </footer>
 
 </main>
@@ -586,6 +590,106 @@ async function applyCase(c){
  }
 
 }
+
+
+async function deleteSelected(){
+
+ if(!selected.size){
+
+  setStatus(
+   "Sélectionne d'abord au moins un jour."
+  );
+
+  return;
+
+ }
+
+ if(!accessToken){
+
+  setStatus(
+   "Connecte-toi à Google avant de supprimer."
+  );
+
+  return;
+
+ }
+
+ const keys=
+ [...selected].filter(k=>assignments.has(k));
+
+ if(!keys.length){
+
+  setStatus(
+   "Aucun des jours sélectionnés n'a d'événement à supprimer."
+  );
+
+  selected.clear();
+
+  render();
+
+  return;
+
+ }
+
+ setStatus(
+  `Suppression de ${keys.length} événement${
+   keys.length>1?"s":""
+  }…`
+ );
+
+ try{
+
+  for(const key of keys){
+
+   const a=assignments.get(key);
+
+   try{
+
+    await googleFetch(
+     `https://www.googleapis.com/calendar/v3/calendars/${
+      encodeURIComponent(a.calendarId)
+     }/events/${a.eventId}`,
+     {method:"DELETE"}
+    );
+
+   }catch(e){
+
+    console.warn(
+     "Suppression impossible pour",key,e
+    );
+
+   }
+
+   assignments.delete(key);
+
+  }
+
+  selected.clear();
+
+  render();
+
+  setStatus(
+   `${keys.length} événement${
+    keys.length>1?"s":""
+   } supprimé${
+    keys.length>1?"s":""
+   }.`
+  );
+
+ }catch(e){
+
+  console.error(e);
+
+  setStatus(
+   "Erreur lors de la suppression."
+  );
+
+ }
+
+}
+
+
+document.getElementById("deleteBtn").onclick=deleteSelected;
 
 
 document.getElementById("auth").onclick=()=>{
