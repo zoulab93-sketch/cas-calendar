@@ -75,7 +75,7 @@ Aucun jour sélectionné
 <div class="cases" id="cases"></div>
 
 <footer>
-Cas Calendar V1.3 — connexion Google et création réelle des événements
+Cas Calendar V1.4 — connexion Google et création réelle des événements
 </footer>
 
 </main>
@@ -105,6 +105,7 @@ let cursor=new Date();
 cursor.setDate(1);
 
 const selected=new Set();
+// assignments: key (jour) -> { caseId, eventId, calendarId }
 const assignments=new Map();
 
 let accessToken=null;
@@ -181,7 +182,7 @@ function render(){
 
    const c=
    cases.find(
-    x=>x.id===assignments.get(key)
+    x=>x.id===assignments.get(key).caseId
    );
 
    const b=
@@ -513,7 +514,65 @@ async function applyCase(c){
     body.end={
      dateTime:`${key}T${c.end}:00`,
      timeZone:tz
-    };s Google Calendar.`
+    };
+
+   }
+
+   // Si ce jour a déjà un événement (même agenda), on le supprime
+   // avant d'en recréer un, pour éviter les doublons dans Google Calendar.
+   const previous=assignments.get(key);
+
+   if(previous&&previous.calendarId===calendarId){
+
+    try{
+
+     await googleFetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${
+       encodeURIComponent(calendarId)
+      }/events/${previous.eventId}`,
+      {method:"DELETE"}
+     );
+
+    }catch(e){
+
+     console.warn("Impossible de supprimer l'ancien événement :",e);
+
+    }
+
+   }
+
+   const created=
+   await googleFetch(
+
+    `https://www.googleapis.com/calendar/v3/calendars/${
+     encodeURIComponent(calendarId)
+    }/events`,
+
+    {
+     method:"POST",
+     body:JSON.stringify(body)
+    }
+
+   );
+
+   assignments.set(key,{
+    caseId:c.id,
+    eventId:created.id,
+    calendarId:calendarId
+   });
+
+  }
+
+  selected.clear();
+
+  render();
+
+  setStatus(
+   `${keys.length} événement${
+    keys.length>1?"s":""
+   } créé${
+    keys.length>1?"s":""
+   } dans Google Calendar.`
   );
 
  }catch(e){
@@ -578,33 +637,3 @@ initGoogle();
 
 </body>
 </html>
-
-   }
-
-   await googleFetch(
-
-    `https://www.googleapis.com/calendar/v3/calendars/${
-     encodeURIComponent(calendarId)
-    }/events`,
-
-    {
-     method:"POST",
-     body:JSON.stringify(body)
-    }
-
-   );
-
-   assignments.set(key,c.id);
-
-  }
-
-  selected.clear();
-
-  render();
-
-  setStatus(
-   `${keys.length} événement${
-    keys.length>1?"s":""
-   } créé${
-    keys.length>1?"s":""
-   } dan
