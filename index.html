@@ -513,37 +513,7 @@ async function applyCase(c){
     body.end={
      dateTime:`${key}T${c.end}:00`,
      timeZone:tz
-    };
-
-   }
-
-   await googleFetch(
-
-    `https://www.googleapis.com/calendar/v3/calendars/${
-     encodeURIComponent(calendarId)
-    }/events`,
-
-    {
-     method:"POST",
-     body:JSON.stringify(body)
-    }
-
-   );
-
-   assignments.set(key,c.id);
-
-  }
-
-  selected.clear();
-
-  render();
-
-  setStatus(
-   `${keys.length} événement${
-    keys.length>1?"s":""
-   } créé${
-    keys.length>1?"s":""
-   } dans Google Calendar.`
+    };s Google Calendar.`
   );
 
  }catch(e){
@@ -608,3 +578,33 @@ initGoogle();
 
 </body>
 </html>
+
+   }
+
+   await googleFetch(
+
+    `https://www.googleapis.com/calendar/v3/calendars/${
+     encodeURIComponent(calendarId)
+    }/events`,
+
+    {
+     method:"POST",
+     body:JSON.stringify(body)
+    }
+
+   );
+
+   assignments.set(key,c.id);
+
+  }
+
+  selected.clear();
+
+  render();
+
+  setStatus(
+   `${keys.length} événement${
+    keys.length>1?"s":""
+   } créé${
+    keys.length>1?"s":""
+   } dan
