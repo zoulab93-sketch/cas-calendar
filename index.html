@@ -79,7 +79,7 @@ Aucun jour sélectionné
 <div class="cases" id="cases"></div>
 
 <footer>
-Cas Calendar V1.6 — connexion Google, synchronisation et création réelle des événements
+Cas Calendar V1.7 — connexion Google, synchronisation et création réelle des événements
 </footer>
 
 </main>
@@ -114,6 +114,46 @@ const assignments=new Map();
 
 let accessToken=null;
 let tokenClient=null;
+
+const TOKEN_KEY="cc_google_token";
+
+function saveToken(token,expiresInSec){
+
+ const expiresAt=
+ Date.now()+((expiresInSec||3600)*1000)-60000;
+
+ sessionStorage.setItem(
+  TOKEN_KEY,
+  JSON.stringify({token,expiresAt})
+ );
+
+}
+
+function loadStoredToken(){
+
+ try{
+
+  const raw=
+  sessionStorage.getItem(TOKEN_KEY);
+
+  if(!raw) return null;
+
+  const {token,expiresAt}=
+  JSON.parse(raw);
+
+  if(Date.now()<expiresAt) return token;
+
+  sessionStorage.removeItem(TOKEN_KEY);
+
+  return null;
+
+ }catch(e){
+
+  return null;
+
+ }
+
+}
 
 const pad=n=>String(n).padStart(2,"0");
 
@@ -324,6 +364,8 @@ function initGoogle(){
    }
 
    accessToken=r.access_token;
+
+   saveToken(r.access_token,r.expires_in);
 
    document.getElementById("auth").textContent=
    "Google connecté";
@@ -827,6 +869,22 @@ document.getElementById("next").onclick=()=>{
 renderCases();
 render();
 initGoogle();
+
+const restoredToken=loadStoredToken();
+
+if(restoredToken){
+
+ accessToken=restoredToken;
+
+ document.getElementById("auth").textContent=
+ "Google connecté";
+
+ document.getElementById("auth")
+ .classList.add("connected");
+
+ loadCalendars();
+
+}
 
 </script>
 
