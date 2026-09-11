@@ -80,7 +80,7 @@ Aucun jour sélectionné
 <div class="cases" id="cases"></div>
 
 <footer>
-Cas Calendar V1.9.1 — connexion Google, synchronisation, couleurs et création réelle des événements
+Cas Calendar V1.9.2 — connexion Google, synchronisation, couleurs et création réelle des événements
 </footer>
 
 </main>
@@ -285,11 +285,21 @@ function render(){
 
   e.onclick=()=>{
 
-   selected.has(key)
-   ?selected.delete(key)
-   :selected.add(key);
+   if(selected.has(key)){
 
-   render();
+    selected.delete(key);
+
+    e.classList.remove("selected");
+
+   }else{
+
+    selected.add(key);
+
+    e.classList.add("selected");
+
+   }
+
+   updateCount();
 
   };
 
