@@ -27,7 +27,8 @@ main{padding:10px 10px 20px;max-width:700px;margin:auto;overflow:hidden}
 .badge-track{display:inline-block;white-space:nowrap}
 .badge-track.marquee{animation-name:marquee;animation-timing-function:linear;animation-iteration-count:infinite}
 @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-.selected-count{margin:12px 2px 8px;font-size:14px;font-weight:650}
+.selected-count{font-size:14px;font-weight:650}
+.selected-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 2px 8px}
 .cases{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .case{border:0;border-radius:12px;padding:11px 4px;background:#fff;box-shadow:0 1px 3px #0001;font-weight:750;cursor:pointer;min-height:55px}
 .case small{display:block;font-size:9px;font-weight:500;color:#666;margin-top:3px;white-space:nowrap}
@@ -36,7 +37,7 @@ main{padding:10px 10px 20px;max-width:700px;margin:auto;overflow:hidden}
 .top{display:flex;gap:8px;align-items:center;margin:0 0 10px}
 .auth{border:0;border-radius:10px;padding:10px 13px;background:#111827;color:white;font-weight:700}
 .auth.connected{background:#e8f5e9;color:#176b2c}
-.delete-btn{border:0;border-radius:10px;padding:9px 13px;background:#fee2e2;color:#b91c1c;font-weight:700;cursor:pointer;margin:0 0 10px}
+.delete-btn{border:0;border-radius:10px;padding:9px 13px;background:#fee2e2;color:#b91c1c;font-weight:700;cursor:pointer;flex-shrink:0}
 .delete-btn:active{transform:scale(.98)}
 #calendarSelect{flex:1;min-width:0;padding:9px;border:1px solid #ccc;border-radius:10px;background:#fff}
 .status{font-size:12px;color:#666;margin:0 2px 8px;min-height:18px}
@@ -81,16 +82,18 @@ Connecte-toi à Google pour créer réellement les événements.
 
 <div class="calendar" id="calendar"></div>
 
+<div class="selected-row">
 <div class="selected-count" id="selectedCount">
 Aucun jour sélectionné
 </div>
 
 <button id="deleteBtn" class="delete-btn">🗑️ Supprimer</button>
+</div>
 
 <div class="cases" id="cases"></div>
 
 <footer>
-Cas Calendar V2.2 — connexion Google, synchronisation, couleurs, swipe animé, icône et création réelle des événements
+Cas Calendar V2.3 — connexion Google, synchronisation, couleurs Google Calendar, swipe animé et icône
 </footer>
 
 </main>
@@ -105,15 +108,15 @@ const SCOPES=
 "https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events";
 
 const cases=[
-{id:1,name:"Matin",start:"05:45",end:"14:45",color:"#93c5fd",text:"#0b1b33"},
-{id:2,name:"Soir",start:"11:00",end:"22:00",color:"#1b5e20",text:"#ffffff"},
-{id:3,name:"Soir rouge",start:"11:00",end:"21:30",color:"#dc2626",text:"#ffffff"},
-{id:4,name:"DOM",start:"07:30",end:"18:00",color:"#c4b5fd",text:"#2e1065"},
-{id:5,name:"Consultation",start:"08:00",end:"17:00",color:"#0f1c4d",text:"#ffffff"},
-{id:6,name:"Formation",start:"09:00",end:"17:00",color:"#076570",text:"#ffffff"},
-{id:7,name:"RH",allDay:true,color:"#f5f0e6",text:"#3a3a3a"},
-{id:8,name:"RTT",allDay:true,color:"#f5f0e6",text:"#3a3a3a"},
-{id:9,name:"CA",allDay:true,color:"#f97316",text:"#3a1c00"}
+{id:1,name:"Matin",start:"05:45",end:"14:45",color:"#93c5fd",text:"#0b1b33",colorId:"7"},
+{id:2,name:"Soir",start:"11:00",end:"22:00",color:"#1b5e20",text:"#ffffff",colorId:"10"},
+{id:3,name:"Soir rouge",start:"11:00",end:"21:30",color:"#dc2626",text:"#ffffff",colorId:"11"},
+{id:4,name:"DOM",start:"07:30",end:"18:00",color:"#c4b5fd",text:"#2e1065",colorId:"1"},
+{id:5,name:"Consultation",start:"08:00",end:"17:00",color:"#0f1c4d",text:"#ffffff",colorId:"9"},
+{id:6,name:"Formation",start:"09:00",end:"17:00",color:"#076570",text:"#ffffff",colorId:"2"},
+{id:7,name:"RH",allDay:true,color:"#f5f0e6",text:"#3a3a3a",colorId:"8"},
+{id:8,name:"RTT",allDay:true,color:"#f5f0e6",text:"#3a3a3a",colorId:"8"},
+{id:9,name:"CA",allDay:true,color:"#f97316",text:"#3a1c00",colorId:"6"}
 ];
 
 let cursor=new Date();
@@ -671,6 +674,12 @@ async function applyCase(c){
    const body={
     summary:c.name
    };
+
+   if(c.colorId){
+
+    body.colorId=c.colorId;
+
+   }
 
    if(c.allDay){
 
