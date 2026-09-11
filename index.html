@@ -24,9 +24,6 @@ main{padding:10px 10px 20px;max-width:700px;margin:auto}
 .badge-track.marquee{animation:marquee 5.5s linear infinite}
 @keyframes marquee{0%,15%{transform:translateX(0)}85%,100%{transform:translateX(var(--scroll-distance))}}
 .selected-count{margin:12px 2px 8px;font-size:14px;font-weight:650}
-.actions{display:flex;gap:8px;margin:0 0 9px}
-.trash{border:0;border-radius:10px;padding:9px 13px;background:#ffe9e9;color:#b42318;font-weight:750;cursor:pointer}
-.trash:disabled{opacity:.45;cursor:default}
 .cases{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .case{border:0;border-radius:12px;padding:11px 4px;background:#fff;box-shadow:0 1px 3px #0001;font-weight:750;cursor:pointer;min-height:55px}
 .case small{display:block;font-size:9px;font-weight:500;color:#666;margin-top:3px;white-space:nowrap}
@@ -75,16 +72,10 @@ Connecte-toi à Google pour créer réellement les événements.
 Aucun jour sélectionné
 </div>
 
-<div class="actions">
-<button id="trash" class="trash" disabled>
-🗑️ Supprimer le cas
-</button>
-</div>
-
 <div class="cases" id="cases"></div>
 
 <footer>
-Cas Calendar V1.7
+Cas Calendar V1.3 — connexion Google et création réelle des événements
 </footer>
 
 </main>
@@ -93,8 +84,7 @@ Cas Calendar V1.7
 
 <script>
 
-const CLIENT_ID=
-"298885465935-ok9fueua2c23l2p2f32uep6o1tcihbm4.apps.googleusercontent.com";
+const CLIENT_ID="298885465935-ok9fueua2c23l2p2f32uep6o1tcihbm4.apps.googleusercontent.com";
 
 const SCOPES=
 "https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events";
@@ -116,14 +106,9 @@ cursor.setDate(1);
 
 const selected=new Set();
 const assignments=new Map();
-const eventIds=new Map();
 
 let accessToken=null;
 let tokenClient=null;
-
-/* MÉMOIRE LOCALE */
-const STORAGE_CALENDAR="casCalendar.selectedCalendarId";
-const STORAGE_EVENTS="casCalendar.eventIds";
 
 const pad=n=>String(n).padStart(2,"0");
 
@@ -131,1235 +116,492 @@ const keyOf=(y,m,d)=>
 `${y}-${pad(m+1)}-${pad(d)}`;
 
 const tz=
-Intl.DateTimeFormat()
-.resolvedOptions()
-.timeZone||
+Intl.DateTimeFormat().resolvedOptions().timeZone||
 "Europe/Paris";
 
 
-/* AFFICHAGE DU CALENDRIER */
-
 function render(){
 
-const y=cursor.getFullYear();
-const m=cursor.getMonth();
+ const y=cursor.getFullYear();
+ const m=cursor.getMonth();
 
-document.getElementById("month").textContent=
-new Intl.DateTimeFormat("fr-FR",{
-month:"long",
-year:"numeric"
-}).format(cursor);
+ document.getElementById("month").textContent=
+ new Intl.DateTimeFormat("fr-FR",{
+   month:"long",
+   year:"numeric"
+ }).format(cursor);
 
-const first=
-(new Date(y,m,1).getDay()+6)%7;
+ const first=
+ (new Date(y,m,1).getDay()+6)%7;
 
-const days=
-new Date(y,m+1,0).getDate();
+ const days=
+ new Date(y,m+1,0).getDate();
 
-const cal=
-document.getElementById("calendar");
+ const cal=
+ document.getElementById("calendar");
 
-cal.innerHTML="";
+ cal.innerHTML="";
 
-for(let i=0;i<first;i++){
+ for(let i=0;i<first;i++){
 
-const e=document.createElement("div");
+  const e=document.createElement("div");
 
-e.className="day empty";
+  e.className="day empty";
 
-cal.appendChild(e);
+  cal.appendChild(e);
+ }
 
-}
+ const today=new Date();
 
-const today=new Date();
+ for(let d=1;d<=days;d++){
 
-for(let d=1;d<=days;d++){
+  const key=keyOf(y,m,d);
 
-const key=keyOf(y,m,d);
+  const e=document.createElement("div");
 
-const e=document.createElement("div");
+  e.className=
+  "day"+
+  (selected.has(key)?" selected":"");
 
-e.className=
-"day"+
-(selected.has(key)?" selected":"");
+  if(
+   y===today.getFullYear()&&
+   m===today.getMonth()&&
+   d===today.getDate()
+  )
+   e.classList.add("today");
 
-if(
-y===today.getFullYear()&&
-m===today.getMonth()&&
-d===today.getDate()
-){
+  const n=document.createElement("div");
 
-e.classList.add("today");
+  n.className="num";
+  n.textContent=d;
 
-}
+  e.appendChild(n);
 
-const n=document.createElement("div");
+  if(assignments.has(key)){
 
-n.className="num";
+   const c=
+   cases.find(
+    x=>x.id===assignments.get(key)
+   );
 
-n.textContent=d;
+   const b=
+   document.createElement("span");
 
-e.appendChild(n);
+   const track=
+   document.createElement("span");
 
-if(assignments.has(key)){
+   b.className="badge";
+   track.className="badge-track";
 
-const c=
-cases.find(
-x=>x.id===assignments.get(key)
-);
+   track.textContent=
+   c.allDay
+   ?c.name
+   :`${c.name} · ${c.start} → ${c.end}`;
 
-if(c){
+   b.appendChild(track);
+   e.appendChild(b);
 
-const b=
-document.createElement("span");
+   if(!c.allDay)
 
-const track=
-document.createElement("span");
+    requestAnimationFrame(()=>{
 
-b.className="badge";
+     const overflow=
+     track.scrollWidth-b.clientWidth;
 
-track.className="badge-track";
+     if(overflow>2){
 
-track.textContent=
-c.allDay
-?c.name
-:`${c.name} · ${c.start} → ${c.end}`;
+      track.classList.add("marquee");
 
-b.appendChild(track);
+      track.style.setProperty(
+       "--scroll-distance",
+       `-${overflow}px`
+      );
 
-e.appendChild(b);
+     }
 
-if(!c.allDay){
+    });
 
-requestAnimationFrame(()=>{
+  }
 
-const overflow=
-track.scrollWidth-b.clientWidth;
+  e.onclick=()=>{
 
-if(overflow>2){
+   selected.has(key)
+   ?selected.delete(key)
+   :selected.add(key);
 
-track.classList.add("marquee");
+   render();
 
-track.style.setProperty(
-"--scroll-distance",
-`-${overflow}px`
-);
+  };
 
-}
+  cal.appendChild(e);
 
-});
+ }
 
-}
-
-}
-
-}
-
-e.onclick=()=>{
-
-if(selected.has(key))
-selected.delete(key);
-else
-selected.add(key);
-
-render();
-
-};
-
-cal.appendChild(e);
+ updateCount();
 
 }
 
-updateCount();
-
-}
-
-
-/* COMPTEUR */
 
 function updateCount(){
 
-const n=selected.size;
+ const n=selected.size;
 
-document.getElementById(
-"selectedCount"
-).textContent=
-
-n===0
-?"Aucun jour sélectionné"
-:`${n} jour${n>1?"s":""} sélectionné${n>1?"s":""}`;
-
-document.getElementById(
-"trash"
-).disabled=
-n===0;
+ document.getElementById("selectedCount").textContent=
+ n===0
+ ?"Aucun jour sélectionné"
+ :`${n} jour${n>1?"s":""} sélectionné${n>1?"s":""}`;
 
 }
 
 
-/* MESSAGE */
+function setStatus(t){
 
-function setStatus(text){
-
-document.getElementById(
-"status"
-).textContent=text;
+ document.getElementById("status").textContent=t;
 
 }
 
-
-/* BOUTONS DES CAS */
 
 function renderCases(){
 
-const box=
-document.getElementById("cases");
+ const box=
+ document.getElementById("cases");
 
-box.innerHTML="";
+ cases.forEach(c=>{
 
-cases.forEach(c=>{
+  const b=
+  document.createElement("button");
 
-const b=
-document.createElement("button");
+  b.className="case";
 
-b.className="case";
+  b.innerHTML=
+  `${c.name}<small>${
+   c.allDay
+   ?"Journée entière"
+   :c.start+" → "+c.end
+  }</small>`;
 
-b.innerHTML=
-`${c.name}<small>${
-c.allDay
-?"Journée entière"
-:c.start+" → "+c.end
-}</small>`;
+  b.onclick=()=>applyCase(c);
 
-b.onclick=
-()=>applyCase(c);
+  box.appendChild(b);
 
-box.appendChild(b);
-
-});
+ });
 
 }
 
-
-/* MÉMOIRE DES ID GOOGLE */
-
-function loadStoredEventIds(){
-
-try{
-
-const data=
-JSON.parse(
-localStorage.getItem(
-STORAGE_EVENTS
-)||
-"{}"
-);
-
-Object.entries(data).forEach(
-([key,id])=>{
-eventIds.set(key,id);
-}
-);
-
-}
-catch(e){
-
-console.error(e);
-
-}
-
-}
-
-
-function saveEventIds(){
-
-try{
-
-const data={};
-
-eventIds.forEach(
-(id,key)=>{
-data[key]=id;
-}
-);
-
-localStorage.setItem(
-STORAGE_EVENTS,
-JSON.stringify(data)
-);
-
-}
-catch(e){
-
-console.error(e);
-
-}
-
-}
-
-
-/* MÉMOIRE DE L'AGENDA */
-
-function rememberCalendar(id){
-
-if(id){
-
-localStorage.setItem(
-STORAGE_CALENDAR,
-id
-);
-
-}
-
-}
-
-
-function rememberedCalendar(){
-
-return localStorage.getItem(
-STORAGE_CALENDAR
-)||"";
-
-}
-
-
-/* GOOGLE */
 
 function initGoogle(){
 
-if(
-!window.google||
-!window.google.accounts||
-!window.google.accounts.oauth2
-){
+ if(!window.google?.accounts?.oauth2){
 
-setTimeout(
-initGoogle,
-250
-);
+  setTimeout(initGoogle,250);
 
-return;
+  return;
 
-}
+ }
 
-tokenClient=
-google.accounts.oauth2.initTokenClient({
+ tokenClient=
+ google.accounts.oauth2.initTokenClient({
 
-client_id:CLIENT_ID,
+  client_id:CLIENT_ID,
 
-scope:SCOPES,
+  scope:SCOPES,
 
-callback:async response=>{
+  callback:async r=>{
 
-if(response.error){
+   if(r.error){
 
-setStatus(
-"Autorisation Google refusée."
-);
+    setStatus(
+     "Autorisation Google refusée."
+    );
 
-return;
+    return;
 
-}
+   }
 
-accessToken=
-response.access_token;
+   accessToken=r.access_token;
 
-document.getElementById(
-"auth"
-).textContent=
-"Google connecté";
+   document.getElementById("auth").textContent=
+   "Google connecté";
 
-document.getElementById(
-"auth"
-).classList.add("connected");
+   document.getElementById("auth")
+   .classList.add("connected");
 
-await loadCalendars();
+   await loadCalendars();
 
-}
+  }
 
-});
+ });
 
 }
 
 
-/* REQUÊTES GOOGLE */
+async function googleFetch(url,options={}){
 
-async function googleFetch(
-url,
-options={}
-){
+ const headers=
+ new Headers(options.headers||{});
 
-const headers=
-new Headers(
-options.headers||{}
-);
+ headers.set(
+  "Authorization",
+  "Bearer "+accessToken
+ );
 
-headers.set(
-"Authorization",
-"Bearer "+accessToken
-);
+ headers.set(
+  "Content-Type",
+  "application/json"
+ );
 
-headers.set(
-"Content-Type",
-"application/json"
-);
+ const r=
+ await fetch(
+  url,
+  {...options,headers}
+ );
 
-const response=
-await fetch(
-url,
-{
-...options,
-headers
-}
-);
+ if(!r.ok)
+  throw new Error(await r.text());
 
-if(!response.ok){
-
-throw new Error(
-await response.text()
-);
+ return r.status===204
+  ?null
+  :r.json();
 
 }
 
-return response.status===204
-?null
-:response.json();
-
-}
-
-
-/* CHARGEMENT DES AGENDAS */
 
 async function loadCalendars(){
 
-try{
+ try{
 
-setStatus(
-"Chargement de tes agendas…"
-);
+  setStatus(
+   "Chargement de tes agendas…"
+  );
 
-const data=
-await googleFetch(
-"https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer&showDeleted=false"
-);
+  const data=
+  await googleFetch(
+   "https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer&showDeleted=false"
+  );
 
-const select=
-document.getElementById(
-"calendarSelect"
-);
+  const sel=
+  document.getElementById("calendarSelect");
 
-select.innerHTML="";
+  sel.innerHTML="";
 
-(data.items||[]).forEach(
-calendar=>{
+  (data.items||[]).forEach(c=>{
 
-const option=
-document.createElement("option");
+   const o=
+   document.createElement("option");
 
-option.value=
-calendar.id;
+   o.value=c.id;
 
-option.textContent=
-calendar.summary+
-(
-calendar.primary
-?" (principal)"
-:""
-);
+   o.textContent=
+   c.summary+
+   (c.primary?" (principal)":"");
 
-select.appendChild(option);
+   sel.appendChild(o);
 
-}
-);
+  });
 
-select.hidden=
-!(data.items&&data.items.length);
+  sel.hidden=
+  !(data.items&&data.items.length);
 
-if(data.items?.length){
+  setStatus(
 
-const saved=
-rememberedCalendar();
+   data.items?.length
 
-const found=
-data.items.find(
-c=>c.id===saved
-);
+   ?`${data.items.length} agenda${
+      data.items.length>1?"s":""
+    } disponible${
+      data.items.length>1?"s":""
+    }.`
 
-select.value=
-found
-?saved
-:(
-data.items.find(
-c=>c.primary
-)?.id||
-data.items[0].id
-);
+   :"Aucun agenda modifiable trouvé."
 
-rememberCalendar(
-select.value
-);
+  );
 
-setStatus(
-"Agenda prêt."
-);
+ }catch(e){
 
-}
-else{
+  console.error(e);
 
-setStatus(
-"Aucun agenda modifiable trouvé."
-);
+  setStatus(
+   "Impossible de charger les agendas Google."
+  );
+
+ }
 
 }
 
-}
-catch(error){
-
-console.error(error);
-
-setStatus(
-"Impossible de charger les agendas Google."
-);
-
-}
-
-}
-
-
-/* SUPPRESSION GOOGLE */
-
-async function deleteGoogleEvent(
-eventId,
-calendarId
-){
-
-if(!eventId)
-return;
-
-try{
-
-await googleFetch(
-
-`https://www.googleapis.com/calendar/v3/calendars/${
-encodeURIComponent(calendarId)
-}/events/${
-encodeURIComponent(eventId)
-}`,
-
-{
-method:"DELETE"
-}
-
-);
-
-}
-catch(error){
-
-if(
-!String(error.message).includes("404")
-){
-
-throw error;
-
-}
-
-}
-
-}
-
-
-/* SI L'ID N'EST PAS CONNU,
-ON LE RETROUVE */
-
-async function findEventForKey(
-key,
-calendarId
-){
-
-const known=
-eventIds.get(key);
-
-if(known)
-return known;
-
-const [y,m,d]=
-key.split("-").map(Number);
-
-const start=
-new Date(
-y,
-m-1,
-d
-).toISOString();
-
-const end=
-new Date(
-y,
-m-1,
-d+1
-).toISOString();
-
-const url=
-`https://www.googleapis.com/calendar/v3/calendars/${
-encodeURIComponent(calendarId)
-}/events?timeMin=${
-encodeURIComponent(start)
-}&timeMax=${
-encodeURIComponent(end)
-}&singleEvents=true&showDeleted=false&maxResults=100`;
-
-const data=
-await googleFetch(url);
-
-for(
-const event of(data.items||[])
-){
-
-if(event.status==="cancelled")
-continue;
-
-const c=
-cases.find(
-x=>x.name===event.summary
-);
-
-if(!c)
-continue;
-
-if(
-c.allDay&&
-event.start?.date===key
-){
-
-return event.id;
-
-}
-
-if(
-!c.allDay&&
-event.start?.dateTime?.startsWith(
-`${key}T${c.start}:`
-)&&
-event.end?.dateTime?.startsWith(
-`${key}T${c.end}:`
-)
-){
-
-return event.id;
-
-}
-
-}
-
-return null;
-
-}
-
-
-/* CRÉATION GOOGLE */
-
-async function createGoogleEvent(
-c,
-key,
-calendarId
-){
-
-const [y,m,d]=
-key.split("-").map(Number);
-
-const body={
-summary:c.name,
-
-extendedProperties:{
-private:{
-casCalendar:"1",
-casId:String(c.id),
-casDate:key
-}
-}
-
-};
-
-if(c.allDay){
-
-const next=
-new Date(
-y,
-m-1,
-d+1
-);
-
-body.start={
-date:key
-};
-
-body.end={
-date:
-`${next.getFullYear()}-${
-pad(next.getMonth()+1)
-}-${
-pad(next.getDate())
-}`
-};
-
-}
-else{
-
-body.start={
-dateTime:
-`${key}T${c.start}:00`,
-timeZone:tz
-};
-
-body.end={
-dateTime:
-`${key}T${c.end}:00`,
-timeZone:tz
-};
-
-}
-
-return googleFetch(
-
-`https://www.googleapis.com/calendar/v3/calendars/${
-encodeURIComponent(calendarId)
-}/events`,
-
-{
-method:"POST",
-body:JSON.stringify(body)
-}
-
-);
-
-}
-
-
-/* CHANGEMENT DE CAS */
 
 async function applyCase(c){
 
-if(!selected.size){
+ if(!selected.size){
 
-setStatus(
-"Sélectionne d'abord au moins un jour."
-);
+  setStatus(
+   "Sélectionne d'abord au moins un jour."
+  );
 
-return;
+  return;
 
-}
+ }
 
-if(!accessToken){
+ if(!accessToken){
 
-setStatus(
-"Connecte-toi à Google avant d'appliquer un cas."
-);
+  setStatus(
+   "Connecte-toi à Google avant d'appliquer un cas."
+  );
 
-return;
+  return;
 
-}
+ }
 
-const calendarId=
-document.getElementById(
-"calendarSelect"
-).value;
+ const calendarId=
+ document.getElementById("calendarSelect").value;
 
-if(!calendarId){
+ if(!calendarId){
 
-setStatus(
-"Choisis un agenda Google."
-);
+  setStatus(
+   "Choisis un agenda Google."
+  );
 
-return;
+  return;
 
-}
+ }
 
-rememberCalendar(calendarId);
+ const keys=[...selected];
 
-const keys=
-[...selected];
+ setStatus(
+  `Création de ${keys.length} événement${
+   keys.length>1?"s":""
+  }…`
+ );
 
+ try{
 
-/*
-ON GARDE L'ANCIEN ÉTAT
-POUR POUVOIR RESTAURER EN CAS D'ERREUR
-*/
+  for(const key of keys){
 
-const old=
-keys.map(key=>({
+   const [y,m,d]=
+   key.split("-").map(Number);
 
-key:key,
+   const body={
+    summary:c.name
+   };
 
-caseId:
-assignments.get(key)||null,
+   if(c.allDay){
 
-eventId:
-eventIds.get(key)||null
+    const start=key;
 
-}));
+    const next=
+    new Date(y,m-1,d+1);
 
+    const end=
+    `${next.getFullYear()}-${
+     pad(next.getMonth()+1)
+    }-${pad(next.getDate())}`;
 
-/*
-MISE À JOUR IMMÉDIATE DE L'ÉCRAN
-*/
+    body.start={
+     date:start
+    };
 
-keys.forEach(key=>{
+    body.end={
+     date:end
+    };
 
-assignments.set(
-key,
-c.id
-);
+   }else{
 
-eventIds.delete(key);
+    body.start={
+     dateTime:`${key}T${c.start}:00`,
+     timeZone:tz
+    };
 
-});
+    body.end={
+     dateTime:`${key}T${c.end}:00`,
+     timeZone:tz
+    };
 
-selected.clear();
+   }
 
-render();
+   await googleFetch(
 
-setStatus(
-`${keys.length} cas modifié${
-keys.length>1?"s":""
-} — enregistrement…`
-);
+    `https://www.googleapis.com/calendar/v3/calendars/${
+     encodeURIComponent(calendarId)
+    }/events`,
 
+    {
+     method:"POST",
+     body:JSON.stringify(body)
+    }
 
-/*
-GOOGLE TRAVAILLE APRÈS
-*/
+   );
 
-(async()=>{
+   assignments.set(key,c.id);
 
-try{
+  }
 
-for(const item of old){
+  selected.clear();
 
-let id=
-item.eventId;
+  render();
 
+  setStatus(
+   `${keys.length} événement${
+    keys.length>1?"s":""
+   } créé${
+    keys.length>1?"s":""
+   } dans Google Calendar.`
+  );
 
-/*
-Si on ne connaît pas l'ancien ID,
-on le recherche seulement ici.
-*/
+ }catch(e){
 
-if(
-!id&&
-item.caseId
-){
+  console.error(e);
 
-id=
-await findEventForKey(
-item.key,
-calendarId
-);
+  setStatus(
+   "Erreur lors de la création. Vérifie l'autorisation Google et ton agenda."
+  );
 
-}
-
-
-/*
-SUPPRESSION DE L'ANCIEN
-*/
-
-if(id){
-
-await deleteGoogleEvent(
-id,
-calendarId
-);
+ }
 
 }
 
 
-/*
-CRÉATION DU NOUVEAU
-*/
+document.getElementById("auth").onclick=()=>{
 
-const created=
-await createGoogleEvent(
-c,
-item.key,
-calendarId
-);
+ if(!tokenClient){
 
-eventIds.set(
-item.key,
-created.id
-);
+  setStatus(
+   "Google est encore en cours de chargement…"
+  );
 
-}
+  return;
 
+ }
 
-/*
-SAUVEGARDE LOCALE
-*/
-
-saveEventIds();
-
-setStatus(
-`${keys.length} cas enregistré${
-keys.length>1?"s":""
-} dans Google Calendar.`
-);
-
-}
-catch(error){
-
-console.error(error);
-
-
-/*
-RESTAURATION
-*/
-
-for(const item of old){
-
-if(item.caseId){
-
-assignments.set(
-item.key,
-item.caseId
-);
-
-}
-else{
-
-assignments.delete(
-item.key
-);
-
-}
-
-if(item.eventId){
-
-eventIds.set(
-item.key,
-item.eventId
-);
-
-}
-else{
-
-eventIds.delete(
-item.key
-);
-
-}
-
-}
-
-saveEventIds();
-
-render();
-
-setStatus(
-"Erreur Google : le changement a été annulé."
-);
-
-}
-
-})();
-
-}
-
-
-/* POUBELLE */
-
-async function deleteCases(){
-
-if(!selected.size){
-
-setStatus(
-"Sélectionne d'abord un jour."
-);
-
-return;
-
-}
-
-if(!accessToken){
-
-setStatus(
-"Connecte-toi à Google avant de supprimer."
-);
-
-return;
-
-}
-
-const calendarId=
-document.getElementById(
-"calendarSelect"
-).value;
-
-if(!calendarId){
-
-setStatus(
-"Choisis un agenda Google."
-);
-
-return;
-
-}
-
-const keys=
-[...selected].filter(
-key=>assignments.has(key)
-);
-
-if(!keys.length){
-
-selected.clear();
-
-render();
-
-setStatus(
-"Aucun cas à supprimer."
-);
-
-return;
-
-}
-
-if(
-!confirm(
-keys.length===1
-?
-"Supprimer ce cas de Google Calendar ?"
-:
-`Supprimer ces ${keys.length} cas de Google Calendar ?`
-)
-)
-return;
-
-
-/*
-SAUVEGARDE POUR RESTAURATION
-*/
-
-const old=
-keys.map(key=>({
-
-key:key,
-
-caseId:
-assignments.get(key),
-
-eventId:
-eventIds.get(key)||null
-
-}));
-
-
-/*
-DISPARITION IMMÉDIATE DE L'ÉCRAN
-*/
-
-keys.forEach(key=>{
-
-assignments.delete(key);
-
-eventIds.delete(key);
-
-});
-
-selected.clear();
-
-render();
-
-saveEventIds();
-
-setStatus(
-`${keys.length} cas supprimé${
-keys.length>1?"s":""
-} — suppression Google…`
-);
-
-
-/*
-SUPPRESSION EN ARRIÈRE-PLAN
-*/
-
-(async()=>{
-
-try{
-
-for(const item of old){
-
-let id=
-item.eventId;
-
-
-/*
-Si nécessaire, retrouver l'événement.
-*/
-
-if(!id){
-
-id=
-await findEventForKey(
-item.key,
-calendarId
-);
-
-}
-
-if(id){
-
-await deleteGoogleEvent(
-id,
-calendarId
-);
-
-}
-
-}
-
-saveEventIds();
-
-setStatus(
-`${keys.length} cas supprimé${
-keys.length>1?"s":""
-} de Google Calendar.`
-);
-
-}
-catch(error){
-
-console.error(error);
-
-
-/*
-RESTAURATION SI GOOGLE REFUSE
-*/
-
-for(const item of old){
-
-assignments.set(
-item.key,
-item.caseId
-);
-
-if(item.eventId){
-
-eventIds.set(
-item.key,
-item.eventId
-);
-
-}
-
-}
-
-saveEventIds();
-
-render();
-
-setStatus(
-"Erreur Google : le cas a été restauré."
-);
-
-}
-
-})();
-
-}
-
-
-/* BOUTON GOOGLE */
-
-document.getElementById(
-"auth"
-).onclick=()=>{
-
-if(!tokenClient){
-
-setStatus(
-"Google est encore en cours de chargement…"
-);
-
-return;
-
-}
-
-tokenClient.requestAccessToken({
-
-prompt:
-accessToken
-?""
-:"consent"
-
-});
+ tokenClient.requestAccessToken({
+  prompt:accessToken?"":"consent"
+ });
 
 };
 
 
-/* CHANGEMENT D'AGENDA */
+document.getElementById("prev").onclick=()=>{
 
-document.getElementById(
-"calendarSelect"
-).onchange=()=>{
+ cursor.setMonth(cursor.getMonth()-1);
 
-rememberCalendar(
-document.getElementById(
-"calendarSelect"
-).value
-);
+ selected.clear();
+
+ render();
 
 };
 
 
-/* POUBELLE */
+document.getElementById("next").onclick=()=>{
 
-document.getElementById(
-"trash"
-).onclick=
-deleteCases;
+ cursor.setMonth(cursor.getMonth()+1);
 
+ selected.clear();
 
-/* MOIS PRÉCÉDENT */
-
-document.getElementById(
-"prev"
-).onclick=()=>{
-
-cursor.setMonth(
-cursor.getMonth()-1
-);
-
-selected.clear();
-
-render();
+ render();
 
 };
 
-
-/* MOIS SUIVANT */
-
-document.getElementById(
-"next"
-).onclick=()=>{
-
-cursor.setMonth(
-cursor.getMonth()+1
-);
-
-selected.clear();
-
-render();
-
-};
-
-
-/* INITIALISATION */
-
-loadStoredEventIds();
 
 renderCases();
-
 render();
-
 initGoogle();
 
 </script>
