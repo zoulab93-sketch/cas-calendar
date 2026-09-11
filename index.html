@@ -28,6 +28,7 @@ main{padding:10px 10px 20px;max-width:700px;margin:auto}
 .case{border:0;border-radius:12px;padding:11px 4px;background:#fff;box-shadow:0 1px 3px #0001;font-weight:750;cursor:pointer;min-height:55px}
 .case small{display:block;font-size:9px;font-weight:500;color:#666;margin-top:3px;white-space:nowrap}
 .case:active{transform:scale(.98)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle;border:1px solid #0002}
 .top{display:flex;gap:8px;align-items:center;margin:0 0 10px}
 .auth{border:0;border-radius:10px;padding:10px 13px;background:#111827;color:white;font-weight:700}
 .auth.connected{background:#e8f5e9;color:#176b2c}
@@ -79,7 +80,7 @@ Aucun jour sélectionné
 <div class="cases" id="cases"></div>
 
 <footer>
-Cas Calendar V1.7 — connexion Google, synchronisation et création réelle des événements
+Cas Calendar V1.8 — connexion Google, synchronisation, couleurs et création réelle des événements
 </footer>
 
 </main>
@@ -94,15 +95,15 @@ const SCOPES=
 "https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events";
 
 const cases=[
-{id:1,name:"Matin",start:"07:30",end:"14:45"},
-{id:2,name:"Soir",start:"11:00",end:"22:00"},
-{id:3,name:"Soir rouge",start:"11:00",end:"21:30"},
-{id:4,name:"DOM",start:"07:30",end:"18:00"},
-{id:5,name:"Consultation",start:"08:00",end:"17:00"},
-{id:6,name:"Formation",start:"09:00",end:"17:00"},
-{id:7,name:"RH",allDay:true},
-{id:8,name:"RTT",allDay:true},
-{id:9,name:"CA",allDay:true}
+{id:1,name:"Matin",start:"07:30",end:"14:45",color:"#93c5fd",text:"#0b1b33"},
+{id:2,name:"Soir",start:"11:00",end:"22:00",color:"#1b5e20",text:"#ffffff"},
+{id:3,name:"Soir rouge",start:"11:00",end:"21:30",color:"#dc2626",text:"#ffffff"},
+{id:4,name:"DOM",start:"07:30",end:"18:00",color:"#c4b5fd",text:"#2e1065"},
+{id:5,name:"Consultation",start:"08:00",end:"17:00",color:"#0f1c4d",text:"#ffffff"},
+{id:6,name:"Formation",start:"09:00",end:"17:00",color:"#076570",text:"#ffffff"},
+{id:7,name:"RH",allDay:true,color:"#f5f0e6",text:"#3a3a3a"},
+{id:8,name:"RTT",allDay:true,color:"#f5f0e6",text:"#3a3a3a"},
+{id:9,name:"CA",allDay:true,color:"#f97316",text:"#3a1c00"}
 ];
 
 let cursor=new Date();
@@ -229,6 +230,10 @@ function render(){
     x=>x.id===assignments.get(key).caseId
    );
 
+   e.style.background=c.color;
+
+   n.style.color=c.text;
+
    const b=
    document.createElement("span");
 
@@ -237,6 +242,8 @@ function render(){
 
    b.className="badge";
    track.className="badge-track";
+
+   b.style.color=c.text;
 
    track.textContent=
    c.allDay
@@ -319,7 +326,7 @@ function renderCases(){
   b.className="case";
 
   b.innerHTML=
-  `${c.name}<small>${
+  `<span class="dot" style="background:${c.color}"></span>${c.name}<small>${
    c.allDay
    ?"Journée entière"
    :c.start+" → "+c.end
