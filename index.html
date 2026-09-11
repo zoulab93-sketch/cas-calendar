@@ -36,6 +36,7 @@ main{padding:10px 10px 20px;max-width:700px;margin:auto}
 .delete-btn:active{transform:scale(.98)}
 #calendarSelect{flex:1;min-width:0;padding:9px;border:1px solid #ccc;border-radius:10px;background:#fff}
 .status{font-size:12px;color:#666;margin:0 2px 8px;min-height:18px}
+.account-line{font-size:13px;color:#444;margin:0 2px 8px}
 footer{margin-top:12px;color:#777;font-size:11px;text-align:center}
 </style>
 </head>
@@ -54,6 +55,8 @@ footer{margin-top:12px;color:#777;font-size:11px;text-align:center}
 <button id="auth" class="auth">Se connecter à Google</button>
 <select id="calendarSelect" hidden aria-label="Agenda Google"></select>
 </div>
+
+<div class="account-line" id="accountLine" hidden></div>
 
 <div class="status" id="status">
 Connecte-toi à Google pour créer réellement les événements.
@@ -80,7 +83,7 @@ Aucun jour sélectionné
 <div class="cases" id="cases"></div>
 
 <footer>
-Cas Calendar V1.9.2 — connexion Google, synchronisation, couleurs et création réelle des événements
+Cas Calendar V2.0 — connexion Google, synchronisation, couleurs, swipe et création réelle des événements
 </footer>
 
 </main>
@@ -548,18 +551,31 @@ async function loadCalendars(){
   });
 
   sel.hidden=
-  !(data.items&&data.items.length);
+  !(data.items&&data.items.length>1);
+
+  const accountLine=
+  document.getElementById("accountLine");
+
+  if(data.items&&data.items.length===1){
+
+   accountLine.hidden=false;
+
+   accountLine.textContent=
+   data.items[0].summary+
+   (data.items[0].primary?" (principal)":"");
+
+   sel.value=data.items[0].id;
+
+  }else{
+
+   accountLine.hidden=true;
+
+  }
 
   setStatus(
 
    data.items?.length
-
-   ?`${data.items.length} agenda${
-      data.items.length>1?"s":""
-    } disponible${
-      data.items.length>1?"s":""
-    }.`
-
+   ?""
    :"Aucun agenda modifiable trouvé."
 
   );
@@ -865,7 +881,7 @@ document.getElementById("auth").onclick=()=>{
 };
 
 
-document.getElementById("prev").onclick=()=>{
+function goPrevMonth(){
 
  cursor.setMonth(cursor.getMonth()-1);
 
@@ -875,10 +891,10 @@ document.getElementById("prev").onclick=()=>{
 
  maybeLoadEvents();
 
-};
+}
 
 
-document.getElementById("next").onclick=()=>{
+function goNextMonth(){
 
  cursor.setMonth(cursor.getMonth()+1);
 
@@ -888,7 +904,52 @@ document.getElementById("next").onclick=()=>{
 
  maybeLoadEvents();
 
-};
+}
+
+
+document.getElementById("prev").onclick=goPrevMonth;
+
+document.getElementById("next").onclick=goNextMonth;
+
+
+let touchStartX=null;
+let touchStartY=null;
+
+const calEl=
+document.getElementById("calendar");
+
+calEl.addEventListener("touchstart",e=>{
+
+ const t=e.changedTouches[0];
+
+ touchStartX=t.clientX;
+ touchStartY=t.clientY;
+
+},{passive:true});
+
+calEl.addEventListener("touchend",e=>{
+
+ if(touchStartX===null) return;
+
+ const t=e.changedTouches[0];
+
+ const dx=t.clientX-touchStartX;
+ const dy=t.clientY-touchStartY;
+
+ touchStartX=null;
+
+ if(
+  Math.abs(dx)>50&&
+  Math.abs(dx)>Math.abs(dy)*1.5
+ ){
+
+  dx<0
+  ?goNextMonth()
+  :goPrevMonth();
+
+ }
+
+},{passive:true});
 
 
 renderCases();
