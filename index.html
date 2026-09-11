@@ -21,8 +21,8 @@ main{padding:10px 10px 20px;max-width:700px;margin:auto}
 .num{font-size:14px}
 .badge{display:block;margin-top:7px;font-size:9px;line-height:1.15;white-space:nowrap;overflow:hidden;width:100%}
 .badge-track{display:inline-block;white-space:nowrap}
-.badge-track.marquee{animation:marquee 5.5s linear infinite}
-@keyframes marquee{0%,15%{transform:translateX(0)}85%,100%{transform:translateX(var(--scroll-distance))}}
+.badge-track.marquee{animation-name:marquee;animation-timing-function:linear;animation-iteration-count:infinite}
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 .selected-count{margin:12px 2px 8px;font-size:14px;font-weight:650}
 .cases{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .case{border:0;border-radius:12px;padding:11px 4px;background:#fff;box-shadow:0 1px 3px #0001;font-weight:750;cursor:pointer;min-height:55px}
@@ -80,7 +80,7 @@ Aucun jour sélectionné
 <div class="cases" id="cases"></div>
 
 <footer>
-Cas Calendar V1.8 — connexion Google, synchronisation, couleurs et création réelle des événements
+Cas Calendar V1.9 — connexion Google, synchronisation, couleurs et création réelle des événements
 </footer>
 
 </main>
@@ -245,10 +245,12 @@ function render(){
 
    b.style.color=c.text;
 
-   track.textContent=
+   const content=
    c.allDay
    ?c.name
    :`${c.name} · ${c.start} → ${c.end}`;
+
+   track.textContent=content;
 
    b.appendChild(track);
    e.appendChild(b);
@@ -262,12 +264,18 @@ function render(){
 
      if(overflow>2){
 
+      const speed=28;
+
+      track.textContent=
+      content+"     "+content;
+
+      const singleWidth=
+      track.scrollWidth/2;
+
       track.classList.add("marquee");
 
-      track.style.setProperty(
-       "--scroll-distance",
-       `-${overflow}px`
-      );
+      track.style.animationDuration=
+      (singleWidth/speed)+"s";
 
      }
 
