@@ -1,0 +1,992 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Cas Calendar</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f6f8;color:#171717;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.monthbar{position:sticky;top:0;z-index:5;height:52px;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #ddd;padding:6px 12px}
+.monthbar button{border:0;background:#eef0f3;border-radius:10px;font-size:24px;width:40px;height:38px;line-height:1}
+.month{font-weight:750;font-size:17px;text-transform:capitalize}
+main{padding:10px 10px 20px;max-width:700px;margin:auto;overflow:hidden}
+.weekdays,.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.weekdays div{text-align:center;font-size:10px;font-weight:750;color:#777;padding:3px 0}
+.day{height:64px;min-height:64px;max-height:64px;border:1px solid #ddd;background:#fff;border-radius:10px;padding:6px;position:relative;cursor:pointer;overflow:hidden}
+.day.empty{background:transparent;border:0;cursor:default}
+.day.selected{outline:3px solid #111827;outline-offset:-3px;background:#eef2ff}
+.day.today .num{font-weight:850}
+.num{font-size:14px}
+.badge{display:block;margin-top:7px;font-size:9px;line-height:1.15;white-space:nowrap;overflow:hidden;width:100%}
+.badge-track{display:inline-block;white-space:nowrap}
+.badge-track.marquee{animation-name:marquee;animation-timing-function:linear;animation-iteration-count:infinite}
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.selected-count{margin:12px 2px 8px;font-size:14px;font-weight:650}
+.cases{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.case{border:0;border-radius:12px;padding:11px 4px;background:#fff;box-shadow:0 1px 3px #0001;font-weight:750;cursor:pointer;min-height:55px}
+.case small{display:block;font-size:9px;font-weight:500;color:#666;margin-top:3px;white-space:nowrap}
+.case:active{transform:scale(.98)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle;border:1px solid #0002}
+.top{display:flex;gap:8px;align-items:center;margin:0 0 10px}
+.auth{border:0;border-radius:10px;padding:10px 13px;background:#111827;color:white;font-weight:700}
+.auth.connected{background:#e8f5e9;color:#176b2c}
+.delete-btn{border:0;border-radius:10px;padding:9px 13px;background:#fee2e2;color:#b91c1c;font-weight:700;cursor:pointer;margin:0 0 10px}
+.delete-btn:active{transform:scale(.98)}
+#calendarSelect{flex:1;min-width:0;padding:9px;border:1px solid #ccc;border-radius:10px;background:#fff}
+.status{font-size:12px;color:#666;margin:0 2px 8px;min-height:18px}
+.account-line{font-size:13px;color:#444;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;text-align:right}
+@keyframes slideInFromRight{from{transform:translateX(26px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes slideInFromLeft{from{transform:translateX(-26px);opacity:0}to{transform:translateX(0);opacity:1}}
+.calendar.slide-next{animation:slideInFromRight .26s ease}
+.calendar.slide-prev{animation:slideInFromLeft .26s ease}
+footer{margin-top:12px;color:#777;font-size:11px;text-align:center}
+</style>
+</head>
+
+<body>
+
+<div class="monthbar">
+<button id="prev" aria-label="Mois précédent">‹</button>
+<div class="month" id="month"></div>
+<button id="next" aria-label="Mois suivant">›</button>
+</div>
+
+<main>
+
+<div class="top">
+<button id="auth" class="auth">Se connecter à Google</button>
+<span class="account-line" id="accountLine" hidden></span>
+<select id="calendarSelect" hidden aria-label="Agenda Google"></select>
+</div>
+
+<div class="status" id="status">
+Connecte-toi à Google pour créer réellement les événements.
+</div>
+
+<div class="weekdays">
+<div>LUN</div>
+<div>MAR</div>
+<div>MER</div>
+<div>JEU</div>
+<div>VEN</div>
+<div>SAM</div>
+<div>DIM</div>
+</div>
+
+<div class="calendar" id="calendar"></div>
+
+<div class="selected-count" id="selectedCount">
+Aucun jour sélectionné
+</div>
+
+<button id="deleteBtn" class="delete-btn">🗑️ Supprimer</button>
+
+<div class="cases" id="cases"></div>
+
+<footer>
+Cas Calendar V2.2 — connexion Google, synchronisation, couleurs, swipe animé, icône et création réelle des événements
+</footer>
+
+</main>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<script>
+
+const CLIENT_ID="298885465935-ok9fueua2c23l2p2f32uep6o1tcihbm4.apps.googleusercontent.com";
+
+const SCOPES=
+"https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events";
+
+const cases=[
+{id:1,name:"Matin",start:"05:45",end:"14:45",color:"#93c5fd",text:"#0b1b33"},
+{id:2,name:"Soir",start:"11:00",end:"22:00",color:"#1b5e20",text:"#ffffff"},
+{id:3,name:"Soir rouge",start:"11:00",end:"21:30",color:"#dc2626",text:"#ffffff"},
+{id:4,name:"DOM",start:"07:30",end:"18:00",color:"#c4b5fd",text:"#2e1065"},
+{id:5,name:"Consultation",start:"08:00",end:"17:00",color:"#0f1c4d",text:"#ffffff"},
+{id:6,name:"Formation",start:"09:00",end:"17:00",color:"#076570",text:"#ffffff"},
+{id:7,name:"RH",allDay:true,color:"#f5f0e6",text:"#3a3a3a"},
+{id:8,name:"RTT",allDay:true,color:"#f5f0e6",text:"#3a3a3a"},
+{id:9,name:"CA",allDay:true,color:"#f97316",text:"#3a1c00"}
+];
+
+let cursor=new Date();
+cursor.setDate(1);
+
+const selected=new Set();
+// assignments: key (jour) -> { caseId, eventId, calendarId }
+const assignments=new Map();
+
+let accessToken=null;
+let tokenClient=null;
+
+const TOKEN_KEY="cc_google_token";
+
+function saveToken(token,expiresInSec){
+
+ const expiresAt=
+ Date.now()+((expiresInSec||3600)*1000)-60000;
+
+ sessionStorage.setItem(
+  TOKEN_KEY,
+  JSON.stringify({token,expiresAt})
+ );
+
+}
+
+function loadStoredToken(){
+
+ try{
+
+  const raw=
+  sessionStorage.getItem(TOKEN_KEY);
+
+  if(!raw) return null;
+
+  const {token,expiresAt}=
+  JSON.parse(raw);
+
+  if(Date.now()<expiresAt) return token;
+
+  sessionStorage.removeItem(TOKEN_KEY);
+
+  return null;
+
+ }catch(e){
+
+  return null;
+
+ }
+
+}
+
+const pad=n=>String(n).padStart(2,"0");
+
+const keyOf=(y,m,d)=>
+`${y}-${pad(m+1)}-${pad(d)}`;
+
+const tz=
+Intl.DateTimeFormat().resolvedOptions().timeZone||
+"Europe/Paris";
+
+
+function render(direction){
+
+ const y=cursor.getFullYear();
+ const m=cursor.getMonth();
+
+ document.getElementById("month").textContent=
+ new Intl.DateTimeFormat("fr-FR",{
+   month:"long",
+   year:"numeric"
+ }).format(cursor);
+
+ const first=
+ (new Date(y,m,1).getDay()+6)%7;
+
+ const days=
+ new Date(y,m+1,0).getDate();
+
+ const cal=
+ document.getElementById("calendar");
+
+ cal.innerHTML="";
+
+ cal.classList.remove("slide-next","slide-prev");
+
+ void cal.offsetWidth;
+
+ for(let i=0;i<first;i++){
+
+  const e=document.createElement("div");
+
+  e.className="day empty";
+
+  cal.appendChild(e);
+ }
+
+ const today=new Date();
+
+ for(let d=1;d<=days;d++){
+
+  const key=keyOf(y,m,d);
+
+  const e=document.createElement("div");
+
+  e.className=
+  "day"+
+  (selected.has(key)?" selected":"");
+
+  if(
+   y===today.getFullYear()&&
+   m===today.getMonth()&&
+   d===today.getDate()
+  )
+   e.classList.add("today");
+
+  const n=document.createElement("div");
+
+  n.className="num";
+  n.textContent=d;
+
+  e.appendChild(n);
+
+  if(assignments.has(key)){
+
+   const c=
+   cases.find(
+    x=>x.id===assignments.get(key).caseId
+   );
+
+   e.style.background=c.color;
+
+   n.style.color=c.text;
+
+   const b=
+   document.createElement("span");
+
+   const track=
+   document.createElement("span");
+
+   b.className="badge";
+   track.className="badge-track";
+
+   b.style.color=c.text;
+
+   const content=
+   c.allDay
+   ?c.name
+   :`${c.name} · ${c.start} → ${c.end}`;
+
+   track.textContent=content;
+
+   b.appendChild(track);
+   e.appendChild(b);
+
+   if(!c.allDay)
+
+    requestAnimationFrame(()=>{
+
+     const overflow=
+     track.scrollWidth-b.clientWidth;
+
+     if(overflow>2){
+
+      const speed=28;
+
+      track.textContent=
+      content+"     "+content;
+
+      const singleWidth=
+      track.scrollWidth/2;
+
+      track.classList.add("marquee");
+
+      track.style.animationDuration=
+      (singleWidth/speed)+"s";
+
+     }
+
+    });
+
+  }
+
+  e.onclick=()=>{
+
+   if(selected.has(key)){
+
+    selected.delete(key);
+
+    e.classList.remove("selected");
+
+   }else{
+
+    selected.add(key);
+
+    e.classList.add("selected");
+
+   }
+
+   updateCount();
+
+  };
+
+  cal.appendChild(e);
+
+ }
+
+ if(direction==="next") cal.classList.add("slide-next");
+ else if(direction==="prev") cal.classList.add("slide-prev");
+
+ updateCount();
+
+}
+
+
+function updateCount(){
+
+ const n=selected.size;
+
+ document.getElementById("selectedCount").textContent=
+ n===0
+ ?"Aucun jour sélectionné"
+ :`${n} jour${n>1?"s":""} sélectionné${n>1?"s":""}`;
+
+}
+
+
+function setStatus(t){
+
+ document.getElementById("status").textContent=t;
+
+}
+
+
+function renderCases(){
+
+ const box=
+ document.getElementById("cases");
+
+ cases.forEach(c=>{
+
+  const b=
+  document.createElement("button");
+
+  b.className="case";
+
+  b.innerHTML=
+  `<span class="dot" style="background:${c.color}"></span>${c.name}<small>${
+   c.allDay
+   ?"Journée entière"
+   :c.start+" → "+c.end
+  }</small>`;
+
+  b.onclick=()=>applyCase(c);
+
+  box.appendChild(b);
+
+ });
+
+}
+
+
+function initGoogle(){
+
+ if(!window.google?.accounts?.oauth2){
+
+  setTimeout(initGoogle,250);
+
+  return;
+
+ }
+
+ tokenClient=
+ google.accounts.oauth2.initTokenClient({
+
+  client_id:CLIENT_ID,
+
+  scope:SCOPES,
+
+  callback:async r=>{
+
+   if(r.error){
+
+    setStatus(
+     "Autorisation Google refusée."
+    );
+
+    return;
+
+   }
+
+   accessToken=r.access_token;
+
+   saveToken(r.access_token,r.expires_in);
+
+   document.getElementById("auth").textContent=
+   "Google connecté";
+
+   document.getElementById("auth")
+   .classList.add("connected");
+
+   await loadCalendars();
+
+  }
+
+ });
+
+}
+
+
+async function googleFetch(url,options={}){
+
+ const headers=
+ new Headers(options.headers||{});
+
+ headers.set(
+  "Authorization",
+  "Bearer "+accessToken
+ );
+
+ headers.set(
+  "Content-Type",
+  "application/json"
+ );
+
+ const r=
+ await fetch(
+  url,
+  {...options,headers}
+ );
+
+ if(!r.ok)
+  throw new Error(await r.text());
+
+ return r.status===204
+  ?null
+  :r.json();
+
+}
+
+
+async function loadEvents(){
+
+ const calendarId=
+ document.getElementById("calendarSelect").value;
+
+ if(!accessToken||!calendarId) return;
+
+ const y=cursor.getFullYear();
+ const m=cursor.getMonth();
+
+ const timeMin=
+ new Date(y,m,1).toISOString();
+
+ const timeMax=
+ new Date(y,m+1,1).toISOString();
+
+ try{
+
+  const data=
+  await googleFetch(
+   `https://www.googleapis.com/calendar/v3/calendars/${
+    encodeURIComponent(calendarId)
+   }/events?timeMin=${
+    encodeURIComponent(timeMin)
+   }&timeMax=${
+    encodeURIComponent(timeMax)
+   }&singleEvents=true&maxResults=250`
+  );
+
+  (data.items||[]).forEach(ev=>{
+
+   const c=
+   cases.find(x=>x.name===ev.summary);
+
+   if(!c) return;
+
+   const dateStr=
+   ev.start?.date||
+   ev.start?.dateTime?.slice(0,10);
+
+   if(!dateStr) return;
+
+   assignments.set(dateStr,{
+    caseId:c.id,
+    eventId:ev.id,
+    calendarId:calendarId
+   });
+
+  });
+
+  render();
+
+ }catch(e){
+
+  console.error(e);
+
+  setStatus(
+   "Impossible de charger les événements existants."
+  );
+
+ }
+
+}
+
+
+function maybeLoadEvents(){
+
+ if(
+  accessToken&&
+  document.getElementById("calendarSelect").value
+ )
+  loadEvents();
+
+}
+
+
+async function loadCalendars(){
+
+ try{
+
+  setStatus(
+   "Chargement de tes agendas…"
+  );
+
+  const data=
+  await googleFetch(
+   "https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer&showDeleted=false"
+  );
+
+  const sel=
+  document.getElementById("calendarSelect");
+
+  sel.innerHTML="";
+
+  (data.items||[]).forEach(c=>{
+
+   const o=
+   document.createElement("option");
+
+   o.value=c.id;
+
+   o.textContent=
+   c.summary+
+   (c.primary?" (principal)":"");
+
+   sel.appendChild(o);
+
+  });
+
+  sel.hidden=
+  !(data.items&&data.items.length>1);
+
+  const accountLine=
+  document.getElementById("accountLine");
+
+  if(data.items&&data.items.length===1){
+
+   accountLine.hidden=false;
+
+   accountLine.textContent=
+   data.items[0].summary+
+   (data.items[0].primary?" (principal)":"");
+
+   sel.value=data.items[0].id;
+
+  }else{
+
+   accountLine.hidden=true;
+
+  }
+
+  setStatus(
+
+   data.items?.length
+   ?""
+   :"Aucun agenda modifiable trouvé."
+
+  );
+
+  sel.onchange=()=>{
+
+   assignments.clear();
+
+   loadEvents();
+
+  };
+
+  if(data.items&&data.items.length)
+   loadEvents();
+
+ }catch(e){
+
+  console.error(e);
+
+  setStatus(
+   "Impossible de charger les agendas Google."
+  );
+
+ }
+
+}
+
+
+async function applyCase(c){
+
+ if(!selected.size){
+
+  setStatus(
+   "Sélectionne d'abord au moins un jour."
+  );
+
+  return;
+
+ }
+
+ if(!accessToken){
+
+  setStatus(
+   "Connecte-toi à Google avant d'appliquer un cas."
+  );
+
+  return;
+
+ }
+
+ const calendarId=
+ document.getElementById("calendarSelect").value;
+
+ if(!calendarId){
+
+  setStatus(
+   "Choisis un agenda Google."
+  );
+
+  return;
+
+ }
+
+ const keys=[...selected];
+
+ setStatus(
+  `Création de ${keys.length} événement${
+   keys.length>1?"s":""
+  }…`
+ );
+
+ try{
+
+  for(const key of keys){
+
+   const [y,m,d]=
+   key.split("-").map(Number);
+
+   const body={
+    summary:c.name
+   };
+
+   if(c.allDay){
+
+    const start=key;
+
+    const next=
+    new Date(y,m-1,d+1);
+
+    const end=
+    `${next.getFullYear()}-${
+     pad(next.getMonth()+1)
+    }-${pad(next.getDate())}`;
+
+    body.start={
+     date:start
+    };
+
+    body.end={
+     date:end
+    };
+
+   }else{
+
+    body.start={
+     dateTime:`${key}T${c.start}:00`,
+     timeZone:tz
+    };
+
+    body.end={
+     dateTime:`${key}T${c.end}:00`,
+     timeZone:tz
+    };
+
+   }
+
+   // Si ce jour a déjà un événement (même agenda), on le supprime
+   // avant d'en recréer un, pour éviter les doublons dans Google Calendar.
+   const previous=assignments.get(key);
+
+   if(previous&&previous.calendarId===calendarId){
+
+    try{
+
+     await googleFetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${
+       encodeURIComponent(calendarId)
+      }/events/${previous.eventId}`,
+      {method:"DELETE"}
+     );
+
+    }catch(e){
+
+     console.warn("Impossible de supprimer l'ancien événement :",e);
+
+    }
+
+   }
+
+   const created=
+   await googleFetch(
+
+    `https://www.googleapis.com/calendar/v3/calendars/${
+     encodeURIComponent(calendarId)
+    }/events`,
+
+    {
+     method:"POST",
+     body:JSON.stringify(body)
+    }
+
+   );
+
+   assignments.set(key,{
+    caseId:c.id,
+    eventId:created.id,
+    calendarId:calendarId
+   });
+
+  }
+
+  selected.clear();
+
+  render();
+
+  setStatus(
+   `${keys.length} événement${
+    keys.length>1?"s":""
+   } créé${
+    keys.length>1?"s":""
+   } dans Google Calendar.`
+  );
+
+ }catch(e){
+
+  console.error(e);
+
+  setStatus(
+   "Erreur lors de la création. Vérifie l'autorisation Google et ton agenda."
+  );
+
+ }
+
+}
+
+
+async function deleteSelected(){
+
+ if(!selected.size){
+
+  setStatus(
+   "Sélectionne d'abord au moins un jour."
+  );
+
+  return;
+
+ }
+
+ if(!accessToken){
+
+  setStatus(
+   "Connecte-toi à Google avant de supprimer."
+  );
+
+  return;
+
+ }
+
+ const keys=
+ [...selected].filter(k=>assignments.has(k));
+
+ if(!keys.length){
+
+  setStatus(
+   "Aucun des jours sélectionnés n'a d'événement à supprimer."
+  );
+
+  selected.clear();
+
+  render();
+
+  return;
+
+ }
+
+ setStatus(
+  `Suppression de ${keys.length} événement${
+   keys.length>1?"s":""
+  }…`
+ );
+
+ try{
+
+  for(const key of keys){
+
+   const a=assignments.get(key);
+
+   try{
+
+    await googleFetch(
+     `https://www.googleapis.com/calendar/v3/calendars/${
+      encodeURIComponent(a.calendarId)
+     }/events/${a.eventId}`,
+     {method:"DELETE"}
+    );
+
+   }catch(e){
+
+    console.warn(
+     "Suppression impossible pour",key,e
+    );
+
+   }
+
+   assignments.delete(key);
+
+  }
+
+  selected.clear();
+
+  render();
+
+  setStatus(
+   `${keys.length} événement${
+    keys.length>1?"s":""
+   } supprimé${
+    keys.length>1?"s":""
+   }.`
+  );
+
+ }catch(e){
+
+  console.error(e);
+
+  setStatus(
+   "Erreur lors de la suppression."
+  );
+
+ }
+
+}
+
+
+document.getElementById("deleteBtn").onclick=deleteSelected;
+
+
+document.getElementById("auth").onclick=()=>{
+
+ if(!tokenClient){
+
+  setStatus(
+   "Google est encore en cours de chargement…"
+  );
+
+  return;
+
+ }
+
+ tokenClient.requestAccessToken({
+  prompt:accessToken?"":"consent"
+ });
+
+};
+
+
+function goPrevMonth(){
+
+ cursor.setMonth(cursor.getMonth()-1);
+
+ selected.clear();
+
+ render("prev");
+
+ maybeLoadEvents();
+
+}
+
+
+function goNextMonth(){
+
+ cursor.setMonth(cursor.getMonth()+1);
+
+ selected.clear();
+
+ render("next");
+
+ maybeLoadEvents();
+
+}
+
+
+document.getElementById("prev").onclick=goPrevMonth;
+
+document.getElementById("next").onclick=goNextMonth;
+
+
+let touchStartX=null;
+let touchStartY=null;
+
+const calEl=
+document.getElementById("calendar");
+
+calEl.addEventListener("touchstart",e=>{
+
+ const t=e.changedTouches[0];
+
+ touchStartX=t.clientX;
+ touchStartY=t.clientY;
+
+},{passive:true});
+
+calEl.addEventListener("touchend",e=>{
+
+ if(touchStartX===null) return;
+
+ const t=e.changedTouches[0];
+
+ const dx=t.clientX-touchStartX;
+ const dy=t.clientY-touchStartY;
+
+ touchStartX=null;
+
+ if(
+  Math.abs(dx)>50&&
+  Math.abs(dx)>Math.abs(dy)*1.5
+ ){
+
+  dx<0
+  ?goNextMonth()
+  :goPrevMonth();
+
+ }
+
+},{passive:true});
+
+
+renderCases();
+render();
+initGoogle();
+
+const restoredToken=loadStoredToken();
+
+if(restoredToken){
+
+ accessToken=restoredToken;
+
+ document.getElementById("auth").textContent=
+ "Google connecté";
+
+ document.getElementById("auth")
+ .classList.add("connected");
+
+ loadCalendars();
+
+}
+
+</script>
+
+</body>
+</html>
