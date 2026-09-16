@@ -21,18 +21,7 @@ main{padding:10px 10px 20px;max-width:700px;margin:auto;overflow:hidden}
 .day{height:64px;min-height:64px;max-height:64px;border:1px solid #ddd;background:#fff;border-radius:10px;padding:6px;position:relative;cursor:pointer;overflow:hidden}
 .day.empty{background:transparent;border:0;cursor:default}
 .day.selected{outline:3px solid #111827;outline-offset:-3px;background:#eef2ff}
-.day.today .num{
-  font-weight:850;
-  color:#fff;
-  background:#2563eb;
-  width:24px;
-  height:24px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border-radius:50%;
-  margin:0 auto;
-}
+.day.today .num{font-weight:850}
 .num{font-size:14px}
 .badge{display:block;margin-top:7px;font-size:9px;line-height:1.15;white-space:nowrap;overflow:hidden;width:100%}
 .badge-track{display:inline-block;white-space:nowrap}
@@ -104,7 +93,7 @@ Aucun jour sélectionné
 <div class="cases" id="cases"></div>
 
 <footer>
-Cas Calendar V2.4 — connexion Google persistante, reconnexion silencieuse
+Cas Calendar V2.5 — connexion Google, synchronisation, emojis, swipe animé et icône
 </footer>
 
 </main>
@@ -119,15 +108,15 @@ const SCOPES=
 "https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events";
 
 const cases=[
-{id:1,name:"Matin",start:"05:45",end:"14:45",color:"#93c5fd",text:"#0b1b33",colorId:"7"},
-{id:2,name:"Soir",start:"11:00",end:"22:00",color:"#1b5e20",text:"#ffffff",colorId:"10"},
-{id:3,name:"Soir rouge",start:"11:00",end:"21:30",color:"#dc2626",text:"#ffffff",colorId:"11"},
-{id:4,name:"DOM",start:"07:30",end:"18:00",color:"#c4b5fd",text:"#2e1065",colorId:"1"},
-{id:5,name:"Consultation",start:"08:00",end:"17:00",color:"#0f1c4d",text:"#ffffff",colorId:"9"},
-{id:6,name:"Formation",start:"09:00",end:"17:00",color:"#076570",text:"#ffffff",colorId:"2"},
-{id:7,name:"RH",allDay:true,color:"#f5f0e6",text:"#3a3a3a",colorId:"8"},
-{id:8,name:"RTT",allDay:true,color:"#f5f0e6",text:"#3a3a3a",colorId:"8"},
-{id:9,name:"CA",allDay:true,color:"#f97316",text:"#3a1c00",colorId:"6"}
+{id:1,name:"🌅 Matin",start:"05:45",end:"14:45",color:"#93c5fd",text:"#0b1b33"},
+{id:2,name:"🌆 Soir",start:"11:00",end:"22:00",color:"#1b5e20",text:"#ffffff"},
+{id:3,name:"🌇 Soir rouge",start:"11:00",end:"21:30",color:"#dc2626",text:"#ffffff"},
+{id:4,name:"🏠 Dom",start:"07:30",end:"18:00",color:"#c4b5fd",text:"#2e1065"},
+{id:5,name:"🩺 Consultation",start:"08:00",end:"17:00",color:"#0f1c4d",text:"#ffffff"},
+{id:6,name:"🎓 Formation",start:"09:00",end:"17:00",color:"#076570",text:"#ffffff"},
+{id:7,name:"🛌 RH",start:"08:00",end:"18:00",color:"#f5f0e6",text:"#3a3a3a"},
+{id:8,name:"🌴 RTT",start:"08:00",end:"18:00",color:"#f5f0e6",text:"#3a3a3a"},
+{id:9,name:"🏖️ CA",start:"08:00",end:"18:00",color:"#f97316",text:"#3a1c00"}
 ];
 
 let cursor=new Date();
@@ -142,15 +131,12 @@ let tokenClient=null;
 
 const TOKEN_KEY="cc_google_token";
 
-// --- CHANGEMENT : localStorage au lieu de sessionStorage ---
-// sessionStorage est effacé à chaque fermeture d'onglet/appli,
-// ce qui obligeait à se reconnecter tous les jours.
 function saveToken(token,expiresInSec){
 
  const expiresAt=
  Date.now()+((expiresInSec||3600)*1000)-60000;
 
- localStorage.setItem(
+ sessionStorage.setItem(
   TOKEN_KEY,
   JSON.stringify({token,expiresAt})
  );
@@ -162,7 +148,7 @@ function loadStoredToken(){
  try{
 
   const raw=
-  localStorage.getItem(TOKEN_KEY);
+  sessionStorage.getItem(TOKEN_KEY);
 
   if(!raw) return null;
 
@@ -171,7 +157,7 @@ function loadStoredToken(){
 
   if(Date.now()<expiresAt) return token;
 
-  localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
 
   return null;
 
@@ -414,13 +400,9 @@ function initGoogle(){
 
    if(r.error){
 
-    // L'échec d'une tentative silencieuse n'est pas grave :
-    // on affiche juste le bouton normal, sans message d'erreur alarmant.
-    if(!accessToken){
-     setStatus(
-      "Connecte-toi à Google pour créer réellement les événements."
-     );
-    }
+    setStatus(
+     "Autorisation Google refusée."
+    );
 
     return;
 
@@ -441,18 +423,6 @@ function initGoogle(){
   }
 
  });
-
- // --- AJOUT : tentative de reconnexion silencieuse ---
- // Si aucun token valide n'est en mémoire, on essaie d'en obtenir un
- // sans afficher l'écran de consentement complet, tant que Google
- // se souvient encore de l'autorisation précédente. Cela évite les
- // 3 clics tant que l'autorisation n'a pas expiré côté Google
- // (environ 7 jours en mode "Testing").
- if(!accessToken){
-
-  tokenClient.requestAccessToken({prompt:""});
-
- }
 
 }
 
@@ -704,12 +674,6 @@ async function applyCase(c){
    const body={
     summary:c.name
    };
-
-   if(c.colorId){
-
-    body.colorId=c.colorId;
-
-   }
 
    if(c.allDay){
 
@@ -1007,6 +971,7 @@ calEl.addEventListener("touchend",e=>{
 
 renderCases();
 render();
+initGoogle();
 
 const restoredToken=loadStoredToken();
 
@@ -1023,8 +988,6 @@ if(restoredToken){
  loadCalendars();
 
 }
-
-initGoogle();
 
 </script>
 
